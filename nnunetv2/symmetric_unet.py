@@ -59,7 +59,7 @@ class SymmetricConvUNet(nn.Module):
 
     def forward(self, x):
         skips = self.encoder(x)
-        x_flip = torch.flip(x, [3])# flip vertically
+        x_flip = torch.flip(x, [3])# flip horizontally
         skips_flip = self.encoder(x_flip)
         return self.decoder(skips, skips_flip)
 
