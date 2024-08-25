@@ -4,6 +4,32 @@ Click [here](https://github.com/MIC-DKFZ/nnUNet/tree/nnunetv1) if you were looki
 
 Coming from V1? Check out the [TLDR Migration Guide](documentation/tldr_migration_guide_from_v1.md). Reading the rest of the documentation is still strongly recommended ;-)
 
+## Where is the augmentation core code?
+
+- DefaultPreprocessor # run_case_save
+- _normalize # nnunetv2.preprocessing.normalization
+
+> There is a mapping as follows:
+  - 'ct': CTNormalization,
+  - 'nonorm': NoNormalization,
+  - 'zscore': ZScoreNormalization,
+  - 'rescale_to_0_1': RescaleTo01Normalization,
+  - 'rgb_to_0_1': RGBTo01Normalization
+
+## What should be done if we want to use a Mask as an extra input channel
+
+In `dataset.json`, map the mask input to 'nonorm'.
+> "channel_names": {
+   "1": "T2", 
+   "3": "High B",
+   "4": "CT",
+   "6": "nonorm"
+}
+
+## How can I verify the preprocessed data?
+
+Go to `nnUNetDataset` and modify the `__main__`
+
 ## **2024-04-18 UPDATE: New residual encoder UNet presets available!**
 Residual encoder UNet presets substantially improve segmentation performance.
 They ship for a variety of GPU memory targets. It's all awesome stuff, promised! 
