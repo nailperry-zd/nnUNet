@@ -81,7 +81,21 @@ class DefaultPreprocessor(object):
         # print('current shape', data.shape[1:], 'current_spacing', original_spacing,
         #       '\ntarget shape', new_shape, 'target_spacing', target_spacing)
         old_shape = data.shape[1:]
-        data = configuration_manager.resampling_fn_data(data, new_shape, original_spacing, target_spacing)
+        # Zonal mask channel's voxel unique values may change after `resampling_fn_data`
+        # To process mask channels and non-mask channels separately
+        # The simplest way is to process each channel one by one
+        volumes = []
+        for c in range(data.shape[0]):
+            volume = data[c:c + 1, :, :, :]
+            unique_num = np.unique(volume).size
+            is_mask = unique_num < 10# change the threshold if necessary
+            print(f"channel {c}'s is_mask = {is_mask}")
+            if is_mask:
+                volume = configuration_manager.resampling_fn_seg(volume, new_shape, original_spacing, target_spacing)
+            else:
+                volume = configuration_manager.resampling_fn_data(volume, new_shape, original_spacing, target_spacing)
+            volumes.append(volume)
+        data = np.stack(volumes, axis=0)
         seg = configuration_manager.resampling_fn_seg(seg, new_shape, original_spacing, target_spacing)
         if self.verbose:
             print(f'old shape: {old_shape}, new_shape: {new_shape}, old_spacing: {original_spacing}, '
