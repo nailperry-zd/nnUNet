@@ -89,13 +89,14 @@ class DefaultPreprocessor(object):
             volume = data[c:c + 1, :, :, :]
             unique_num = np.unique(volume).size
             is_mask = unique_num < 10# change the threshold if necessary
-            print(f"channel {c}'s is_mask = {is_mask}")
             if is_mask:
+                print(f"channel {c}'s is_mask = {is_mask}")
                 volume = configuration_manager.resampling_fn_seg(volume, new_shape, original_spacing, target_spacing)
             else:
                 volume = configuration_manager.resampling_fn_data(volume, new_shape, original_spacing, target_spacing)
-            volumes.append(volume)
+            volumes.append(np.squeeze(volume, axis=0))
         data = np.stack(volumes, axis=0)
+        print(f"resampled data shape = {data.shape}")
         seg = configuration_manager.resampling_fn_seg(seg, new_shape, original_spacing, target_spacing)
         if self.verbose:
             print(f'old shape: {old_shape}, new_shape: {new_shape}, old_spacing: {original_spacing}, '
