@@ -4,6 +4,7 @@ from threadpoolctl import threadpool_limits
 
 from nnunetv2.training.dataloading.base_data_loader import nnUNetDataLoaderBase
 from nnunetv2.training.dataloading.nnunet_dataset import nnUNetDataset
+import SimpleITK as sitk
 
 
 class nnUNetDataLoader3D(nnUNetDataLoaderBase):
@@ -58,8 +59,15 @@ class nnUNetDataLoader3D(nnUNetDataLoaderBase):
                     images = []
                     segs = []
                     for b in range(self.batch_size):
-                        tmp = self.transforms(**{'image': data_all[b], 'segmentation': seg_all[b]})
-                        images.append(tmp['image'])
+                        mask_image = data_all[b][-1:].clone()# quite important to do deep copy
+                        mask_seg = data_all[b][-1:].clone()
+                        print(f'b={b}, before self.transforms, mask np.unique is {np.unique(mask_image)}')
+                        tmp = self.transforms(**{'image': data_all[b][:-1], 'segmentation': seg_all[b]})
+                        # only applicable where the last input channel is mask
+                        tmp_mask = self.transforms(**{'image': mask_image, 'segmentation': mask_seg})
+                        print(f'b={b}, after self.transforms, tmp_mask np.unique is {np.unique(tmp_mask['segmentation'][0])}')
+                        combined_tensor = torch.cat((tmp['image'], tmp_mask['segmentation'][0]), dim=0)
+                        images.append(combined_tensor)
                         segs.append(tmp['segmentation'])
                     data_all = torch.stack(images)
                     if isinstance(segs[0], list):
