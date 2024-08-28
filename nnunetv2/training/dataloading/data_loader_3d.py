@@ -61,11 +61,16 @@ class nnUNetDataLoader3D(nnUNetDataLoaderBase):
                     for b in range(self.batch_size):
                         mask_image = data_all[b][-1:].clone()# quite important to do deep copy
                         mask_seg = data_all[b][-1:].clone()
-                        print(f'pid={selected_keys[b]}, before self.transforms, mask np.unique is {np.unique(mask_image)}')
+                        # Check if unique values match [0., 1., 2.]
+                        unique_values = np.unique(mask_image)
+                        if not np.array_equal(unique_values, np.array([0., 1., 2.])):
+                            print(f'pid={selected_keys[b]}, before self.transforms, mask np.unique is {unique_values}')
                         tmp = self.transforms(**{'image': data_all[b][:-1], 'segmentation': seg_all[b]})
                         # tmp solution: only applicable when the last input channel is mask
                         tmp_mask = self.transforms(**{'image': mask_image, 'segmentation': mask_seg})
-                        print(f"pid={selected_keys[b]}, after self.transforms, tmp_mask np.unique is {np.unique(tmp_mask['segmentation'][0])}")
+                        unique_values = np.unique(tmp_mask['segmentation'][0])
+                        if not np.array_equal(unique_values, np.array([0., 1., 2.])):
+                            print(f"pid={selected_keys[b]}, after self.transforms, tmp_mask np.unique is {unique_values}")
                         combined_tensor = torch.cat((tmp['image'], tmp_mask['segmentation'][0]), dim=0)
                         images.append(combined_tensor)
                         segs.append(tmp['segmentation'])
