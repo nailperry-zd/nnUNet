@@ -89,8 +89,8 @@ class nnUNetDataLoader3D(nnUNetDataLoaderBase):
                         if not np.array_equal(unique_values, np.array([0., 1., 2.])):
                             print(f"pid={selected_keys[b]}, after self.transforms, zonal_mask np.unique is {unique_values}")
                             tst_output(selected_keys[b], tmp, 'badcase')
-                        else:
-                            tst_output(selected_keys[b], tmp, 'goodcase')
+                        # else:
+                        #     tst_output(selected_keys[b], tmp, 'goodcase')
                         combined_tensor = torch.cat((tmp['image'], tmp['regression_target']), dim=0)
                         images.append(combined_tensor)
                         segs.append(tmp['segmentation'])
