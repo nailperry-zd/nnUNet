@@ -6,6 +6,19 @@ from nnunetv2.training.dataloading.base_data_loader import nnUNetDataLoaderBase
 from nnunetv2.training.dataloading.nnunet_dataset import nnUNetDataset
 import SimpleITK as sitk
 
+def tst_output(pid, tmp, tmp_mask):
+    output = torch.cat((tmp['image'], tmp_mask['segmentation'][0], tmp['segmentation'][0]), dim=0)
+    for i in range(output.shape[0]):
+        # Convert the numpy array to a SimpleITK image
+        sitk_image = sitk.GetImageFromArray(output.numpy()[i])
+
+        # Optionally set the spacing and origin (if needed)
+        sitk_image.SetSpacing((1.0, 1.0, 1.0))  # Set spacing for x, y, z dimensions
+        sitk_image.SetOrigin((0.0, 0.0, 0.0))  # Set origin for x, y, z dimensions
+
+        # Save the image as a .nii.gz file
+        sitk.WriteImage(sitk_image, f'{pid}.nii.gz')
+
 
 class nnUNetDataLoader3D(nnUNetDataLoaderBase):
     def generate_train_batch(self):
@@ -71,6 +84,7 @@ class nnUNetDataLoader3D(nnUNetDataLoaderBase):
                         unique_values = np.unique(tmp_mask['segmentation'][0])
                         if not np.array_equal(unique_values, np.array([0., 1., 2.])):
                             print(f"pid={selected_keys[b]}, after self.transforms, tmp_mask np.unique is {unique_values}")
+                            tst_output(selected_keys[b], tmp, tmp_mask)
                         combined_tensor = torch.cat((tmp['image'], tmp_mask['segmentation'][0]), dim=0)
                         images.append(combined_tensor)
                         segs.append(tmp['segmentation'])
