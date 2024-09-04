@@ -9,8 +9,12 @@ from nnunetv2.training.dataloading.nnunet_dataset import nnUNetDataset
 import SimpleITK as sitk
 from nnunetv2.paths import nnUNet_results
 
-def tst_output(pid, tmp, tag):
-    output = torch.cat((tmp['image'], tmp['regression_target'], tmp['segmentation'][0]), dim=0)
+def tst_output(pid, output, label, tag):
+    unique_values_label = np.unique(label)
+    if np.array_equal(unique_values_label, np.array([0., 1.])):
+        label_range = 'label01'
+    else:
+        label_range = 'label0'
     for i in range(output.shape[0]):
         # Convert the numpy array to a SimpleITK image
         sitk_image = sitk.GetImageFromArray(output.numpy()[i])
@@ -19,14 +23,14 @@ def tst_output(pid, tmp, tag):
         sitk_image.SetSpacing((1.0, 1.0, 1.0))  # Set spacing for x, y, z dimensions
         sitk_image.SetOrigin((0.0, 0.0, 0.0))  # Set origin for x, y, z dimensions
 
-        unique_values_label = np.unique(tmp['segmentation'][0])
-        if np.array_equal(unique_values_label, np.array([0., 1.])):
-            label_range = 'label01'
-        else:
-            label_range = 'label0'
         # Save the image as a .nii.gz file
         sitk.WriteImage(sitk_image, os.path.join(nnUNet_results, fr'{tag}_{pid}_{i}_{label_range}.nii.gz'))
+        # sitk.WriteImage(sitk_image, os.path.join(r"C:\Users\dzha937\DEV\pycharm_workdir\Dataset602_ProstatexCT", fr'{tag}_{pid}_{i}_{label_range}.nii.gz'))
 
+def is_c0003_mask(data):
+    channel_num = data.shape[0]
+    unique_values = np.unique(data[-1:])
+    return channel_num == 4 and len(unique_values) <= 4
 
 class nnUNetDataLoader3D(nnUNetDataLoaderBase):
     def generate_train_batch(self):
@@ -81,19 +85,32 @@ class nnUNetDataLoader3D(nnUNetDataLoaderBase):
                     segs = []
                     for b in range(self.batch_size):
                         unique_values = np.unique(data_all[b][-1:])
-                        if not np.array_equal(unique_values, np.array([0., 1., 2.])):
-                            print(f'pid={selected_keys[b]}, before self.transforms, zonal_mask np.unique is {unique_values}')
-                        # tmp solution: only applicable when the last input channel is mask
-                        tmp = self.transforms(**{'image': data_all[b][:-1], 'regression_target': data_all[b][-1:], 'segmentation': seg_all[b]})
-                        unique_values = np.unique(tmp['regression_target'][0])
-                        if not np.array_equal(unique_values, np.array([0., 1., 2.])):
-                            print(f"pid={selected_keys[b]}, after self.transforms, zonal_mask np.unique is {unique_values}")
-                            tst_output(selected_keys[b], tmp, 'badcase')
-                        # else:
-                        #     tst_output(selected_keys[b], tmp, 'goodcase')
-                        combined_tensor = torch.cat((tmp['image'], tmp['regression_target']), dim=0)
-                        images.append(combined_tensor)
-                        segs.append(tmp['segmentation'])
+                        if is_c0003_mask(data_all[b]):
+                            # print(f'pid={selected_keys[b]}, before self.transforms, zonal_mask np.unique is {unique_values}')
+                            # tmp solution: only applicable when the last input channel is mask
+                            # stack [label, mask] together
+                            tmp_mask = torch.cat((seg_all[b], data_all[b][-1:]), dim=0)
+                            tmp = self.transforms(**{'image': data_all[b][:-1], 'segmentation': tmp_mask})
+                            processed_mask = tmp['segmentation'][0][-1:]
+                            unique_values = np.unique(processed_mask)
+                            combined_tensor = torch.cat((tmp['image'], processed_mask), dim=0)
+                            if not len(unique_values) <= 4:
+                                print(f"pid={selected_keys[b]}, after self.transforms, zonal_mask np.unique is {unique_values}")
+                                tst_output(selected_keys[b], combined_tensor, tmp['segmentation'][0][0], 'badcase')
+                            # else:
+                            #     tst_output(selected_keys[b], combined_tensor, tmp['segmentation'][0][0], 'goodcase')
+                            images.append(combined_tensor)
+
+                            processed_label_pyramid = []
+                            for i in range(len(tmp['segmentation'])):
+                                processed_label_pyramid.append(tmp['segmentation'][i][0:1])
+
+                            segs.append(processed_label_pyramid)
+                        else:
+                            tmp = self.transforms(**{'image': data_all[b], 'segmentation': seg_all[b]})
+                            # tst_output(selected_keys[b], tmp['image'], tmp['segmentation'][0], '')
+                            images.append(tmp['image'])
+                            segs.append(tmp['segmentation'])
                     data_all = torch.stack(images)
                     if isinstance(segs[0], list):
                         seg_all = [torch.stack([s[i] for s in segs]) for i in range(len(segs[0]))]
