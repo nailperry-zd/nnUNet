@@ -77,7 +77,7 @@ class myTrainer_zonal(nnUNetTrainer):
 
         self.pin_memory = True
 
-        self.loss = FL_and_CE_loss(alpha=0.5)
+        # self.loss = FL_and_CE_loss(alpha=0.5)
         # self.save_latest_only = False
         self.num_input_channels = 6
 
