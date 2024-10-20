@@ -24,7 +24,7 @@ from batchgenerators.utilities.file_and_folder_operations import *
 
 
 def get_case_identifiers(folder):
-    case_identifiers = [i[:-4] for i in os.listdir(folder) if i.endswith("npz") and (i.find("segFromPrevStage") == -1)]
+    case_identifiers = [i[:-4] for i in os.listdir(folder) if i.endswith("npz") and (i.find("seg") == -1)]
     return case_identifiers
 
 
@@ -99,8 +99,8 @@ def load_dataset(folder, num_cases_properties_loading_threshold=1000):
         # dataset[c]['properties'] = load_pickle(join(folder, "%s.pkl" % c))
         dataset[c]['properties_file'] = join(folder, "%s.pkl" % c)
 
-        if dataset[c].get('seg_from_prev_stage_file') is not None:
-            dataset[c]['seg_from_prev_stage_file'] = join(folder, "%s_segs.npz" % c)
+        # if dataset[c].get('seg_from_prev_stage_file') is not None:
+        dataset[c]['seg_from_prev_stage_file'] = join(folder, "%s_seg.npz" % c)
 
     if len(case_identifiers) <= num_cases_properties_loading_threshold:
         print('loading all case properties')
@@ -153,7 +153,7 @@ def crop_2D_image_force_fg(img, crop_size, valid_voxels):
 
 
 class DataLoader3D(SlimDataLoaderBase):
-    def __init__(self, data, patch_size, final_patch_size, batch_size, has_prev_stage=False,
+    def __init__(self, data, patch_size, final_patch_size, batch_size, has_prev_stage=True,
                  oversample_foreground_percent=0.0, memmap_mode="r", pad_mode="edge", pad_kwargs_data=None,
                  pad_sides=None):
         """
@@ -280,7 +280,7 @@ class DataLoader3D(SlimDataLoaderBase):
                     need_to_pad[d] = self.patch_size[d] - case_all_data.shape[d + 1]
 
             # we can now choose the bbox from -need_to_pad // 2 to shape - patch_size + need_to_pad // 2. Here we
-            # define what the upper and lower bound can be to then sample from them with np.random.randint
+            # define what the upper and lower bound can be to then sample form them with np.random.randint
             shape = case_all_data.shape[1:]
             lb_x = - need_to_pad[0] // 2
             ub_x = shape[0] + need_to_pad[0] // 2 + need_to_pad[0] % 2 - self.patch_size[0]
@@ -390,7 +390,7 @@ class DataLoader2D(SlimDataLoaderBase):
         and increase CPU usage. Therefore, I advise you to call unpack_dataset(folder) first, which will unpack all npz
         to npy. Don't forget to call delete_npy(folder) after you are done with training?
         Why all the hassle? Well the decathlon dataset is huge. Using npy for everything will consume >1 TB and that is uncool
-        given that I (Fabian) will have to store that permanently on /datasets and my local computer. With this strategy all
+        given that I (Fabian) will have to store that permanently on /datasets and my local computer. With htis strategy all
         data is stored in a compressed format (factor 10 smaller) and only unpacked when needed.
         :param data: get this with load_dataset(folder, stage=0). Plug the return value in here and you are g2g (good to go)
         :param patch_size: what patch size will this data loader return? it is common practice to first load larger

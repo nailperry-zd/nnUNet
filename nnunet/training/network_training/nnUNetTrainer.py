@@ -14,7 +14,7 @@
 
 
 import shutil
-import traceback
+from picai_baseline.nndetection.training_docker import shutil_sol
 from collections import OrderedDict
 from multiprocessing import Pool
 from time import sleep
@@ -308,10 +308,7 @@ class nnUNetTrainer(NetworkTrainer):
         del dct['dataset_tr']
         del dct['dataset_val']
         save_json(dct, join(self.output_folder, "debug.json"))
-
-        import shutil
-
-        shutil.copy(self.plans_file, join(self.output_folder_base, "plans.pkl"))
+        shutil_sol.copyfile(self.plans_file, join(self.output_folder_base, "plans.pkl"))
 
     def run_training(self):
         self.save_debug_information()
@@ -363,7 +360,7 @@ class nnUNetTrainer(NetworkTrainer):
         self.intensity_properties = plans['dataset_properties']['intensityproperties']
         self.normalization_schemes = plans['normalization_schemes']
         self.base_num_features = plans['base_num_features']
-        self.num_input_channels = plans['num_modalities']
+        self.num_input_channels = plans['num_modalities'] + 3 
         self.num_classes = plans['num_classes'] + 1  # background is no longer in num_classes
         self.classes = plans['all_classes']
         self.use_mask_for_norm = plans['use_mask_for_norm']
@@ -387,7 +384,7 @@ class nnUNetTrainer(NetworkTrainer):
         else:
             raise RuntimeError("invalid patch size in plans file: %s" % str(self.patch_size))
 
-        if "conv_per_stage" in plans.keys():  # this ha sbeen added to the plans only recently
+        if "conv_per_stage" in plans.keys():  # this has been added to the plans only recently
             self.conv_per_stage = plans['conv_per_stage']
         else:
             self.conv_per_stage = 2
@@ -401,9 +398,9 @@ class nnUNetTrainer(NetworkTrainer):
 
         if self.threeD:
             dl_tr = DataLoader3D(self.dataset_tr, self.basic_generator_patch_size, self.patch_size, self.batch_size,
-                                 False, oversample_foreground_percent=self.oversample_foreground_percent,
+                                 True, oversample_foreground_percent=self.oversample_foreground_percent,
                                  pad_mode="constant", pad_sides=self.pad_all_sides, memmap_mode='r')
-            dl_val = DataLoader3D(self.dataset_val, self.patch_size, self.patch_size, self.batch_size, False,
+            dl_val = DataLoader3D(self.dataset_val, self.patch_size, self.patch_size, self.batch_size, True,
                                   oversample_foreground_percent=self.oversample_foreground_percent,
                                   pad_mode="constant", pad_sides=self.pad_all_sides, memmap_mode='r')
         else:
@@ -589,11 +586,17 @@ class nnUNetTrainer(NetworkTrainer):
             if overwrite or (not isfile(join(output_folder, fname + ".nii.gz"))) or \
                     (save_softmax and not isfile(join(output_folder, fname + ".npz"))):
                 data = np.load(self.dataset[k]['data_file'])['data']
+                seg = np.load(self.dataset[k]['seg_from_prev_stage_file'])['data']
+              
+                seg_onehot = np.zeros((3, *seg.shape[0:]), dtype=seg.dtype)
+                for i, l in enumerate([0,1,2]):
+                    seg_onehot[i][seg == l] = 1
+                data_c = np.concatenate((data[:-1], seg_onehot), 0)
 
                 print(k, data.shape)
                 data[-1][data[-1] == -1] = 0
 
-                softmax_pred = self.predict_preprocessed_data_return_seg_and_softmax(data[:-1],
+                softmax_pred = self.predict_preprocessed_data_return_seg_and_softmax(data_c,
                                                                                      do_mirroring=do_mirroring,
                                                                                      mirror_axes=mirror_axes,
                                                                                      use_sliding_window=use_sliding_window,
@@ -666,17 +669,18 @@ class nnUNetTrainer(NetworkTrainer):
         for f in subfiles(self.gt_niftis_folder, suffix=".nii.gz"):
             success = False
             attempts = 0
+            e = None
             while not success and attempts < 10:
                 try:
-                    shutil.copy(f, gt_nifti_folder)
+                    shutil_sol.copyfile(f, gt_nifti_folder)
                     success = True
-                except OSError:
-                    print("Could not copy gt nifti file %s into folder %s" % (f, gt_nifti_folder))
-                    traceback.print_exc()
+                except OSError as e:
                     attempts += 1
                     sleep(1)
             if not success:
-                raise OSError(f"Something went wrong while copying nifti files to {gt_nifti_folder}. See above for the trace.")
+                print("Could not copy gt nifti file %s into folder %s" % (f, gt_nifti_folder))
+                if e is not None:
+                    raise e
 
         self.network.train(current_mode)
 
