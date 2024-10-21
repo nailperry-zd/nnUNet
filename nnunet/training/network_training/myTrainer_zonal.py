@@ -16,6 +16,8 @@ from typing import Tuple
 
 import numpy as np
 import torch
+
+import nnunet.utilities.visualize_data_seg
 from nnunet.training.data_augmentation.data_augmentation_moreDA import get_moreDA_augmentation
 from nnunet.training.loss_functions.deep_supervision import MultipleOutputLoss2
 from nnunet.network_architecture.MNet import MNet
@@ -284,6 +286,8 @@ class myTrainer_zonal(nnUNetTrainer):
         data_dict = next(data_generator)
         data = data_dict['data']
         target = data_dict['target']
+
+        nnunet.utilities.visualize_data_seg.visualize_data_seg_aug(data, target)
 
         data = maybe_to_torch(data)
         target = maybe_to_torch(target)

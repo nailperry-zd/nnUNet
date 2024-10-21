@@ -18,6 +18,7 @@ from multiprocessing import Pool
 
 from batchgenerators.dataloading.data_loader import SlimDataLoaderBase
 
+import nnunet.utilities.visualize_data_seg
 from nnunet.configuration import default_num_threads
 from nnunet.paths import preprocessing_output_dir
 from batchgenerators.utilities.file_and_folder_operations import *
@@ -375,7 +376,8 @@ class DataLoader3D(SlimDataLoaderBase):
                                                              (-min(0, bbox_z_lb),
                                                               max(bbox_z_ub - shape[2], 0))),
                                    'constant', **{'constant_values': 0})
-
+        # visualize data of training in progress
+        nnunet.utilities.visualize_data_seg.visualize_data_seg(data, seg, selected_keys)
         return {'data': data, 'seg': seg, 'properties': case_properties, 'keys': selected_keys}
 
 
