@@ -13,8 +13,7 @@
 #    limitations under the License.
 
 from nnunet.training.loss_functions.crossentropy import RobustCrossEntropyLoss
-from nnunet.training.network_training.nnUNet_variants.loss_function.nnUNetTrainerV2_focalLoss import \
-    FocalLoss
+from nnunet.training.network_training.nnUNetTrainerV2_focalLoss import FocalLoss
 from nnunet.training.network_training.nnUNetTrainerV2 import nnUNetTrainerV2
 from torch import nn
 
