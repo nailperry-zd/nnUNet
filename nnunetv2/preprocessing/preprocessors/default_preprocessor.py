@@ -85,12 +85,13 @@ class DefaultPreprocessor(object):
         # To process mask channels and non-mask channels separately
         # The simplest way is to process each channel one by one
         volumes = []
-        for c in range(data.shape[0]):
+        channel_num = data.shape[0]
+        mask_list = list(range(3, channel_num)) # treat all the other channels (besides the conventional 3 channels) as masks
+        for c in range(channel_num):
             volume = data[c:c + 1, :, :, :]
-            unique_num = np.unique(volume).size
-            is_mask = unique_num < 10# change the threshold if necessary
-            if is_mask:
-                print(f"channel {c}'s is_mask = {is_mask}")
+             # the last channel is mask
+            if c in mask_list:
+                print(f"channel {c}'s is treated as a mask")
                 volume = configuration_manager.resampling_fn_seg(volume, new_shape, original_spacing, target_spacing)
             else:
                 volume = configuration_manager.resampling_fn_data(volume, new_shape, original_spacing, target_spacing)
