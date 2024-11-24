@@ -10,8 +10,9 @@ import SimpleITK as sitk
 from nnunetv2.paths import nnUNet_results
 
 DEBUG_FLAG = False
-CUSTOM_OUTPUT_PATH = r"C:\Users\dzha937\DEV\pycharm_workdir\Training_in_Progress\Dataset912_ProstatexCT"
-# CUSTOM_OUTPUT_PATH = None
+# DEBUG_FLAG = True
+# CUSTOM_OUTPUT_PATH = r"C:\Users\dzha937\DEV\pycharm_workdir\Training_in_Progress\Dataset912_ProstatexCT"
+CUSTOM_OUTPUT_PATH = None
 def tst_output(pid, output, label, tag):
     if not DEBUG_FLAG:
         return
@@ -43,7 +44,8 @@ def tst_output(pid, output, label, tag):
 def is_c0003_mask(data):
     channel_num = data.shape[0]
     # unique_values = np.unique(data[-1:])
-    return channel_num > 3
+    # return channel_num > 3
+    return False
 
 class nnUNetDataLoader3D(nnUNetDataLoaderBase):
     def generate_train_batch(self):

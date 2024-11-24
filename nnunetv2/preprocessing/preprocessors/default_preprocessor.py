@@ -86,7 +86,8 @@ class DefaultPreprocessor(object):
         # The simplest way is to process each channel one by one
         volumes = []
         channel_num = data.shape[0]
-        mask_list = list(range(3, channel_num)) # treat all the other channels (besides the conventional 3 channels) as masks
+        # mask_list = list(range(3, channel_num)) # treat all the other channels (besides the conventional 3 channels) as masks
+        mask_list = [] # do nothing to the last channel
         for c in range(channel_num):
             volume = data[c:c + 1, :, :, :]
              # the last channel is mask
