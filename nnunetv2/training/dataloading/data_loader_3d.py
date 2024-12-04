@@ -27,10 +27,9 @@ def tst_output(pid, output, label, tag):
         sitk.WriteImage(sitk_image, os.path.join(nnUNet_results, fr'{tag}_{pid}_{i}_{label_range}.nii.gz'))
         # sitk.WriteImage(sitk_image, os.path.join(r"C:\Users\dzha937\DEV\pycharm_workdir\Dataset602_ProstatexCT", fr'{tag}_{pid}_{i}_{label_range}.nii.gz'))
 
-def is_c0003_mask(data):
-    channel_num = data.shape[0]
+def is_lastchannel_mask(data):
     unique_values = np.unique(data[-1:])
-    return channel_num == 4 and len(unique_values) <= 4
+    return len(unique_values) <= 4
 
 class nnUNetDataLoader3D(nnUNetDataLoaderBase):
     def generate_train_batch(self):
@@ -85,7 +84,7 @@ class nnUNetDataLoader3D(nnUNetDataLoaderBase):
                     segs = []
                     for b in range(self.batch_size):
                         unique_values = np.unique(data_all[b][-1:])
-                        if is_c0003_mask(data_all[b]):
+                        if is_lastchannel_mask(data_all[b]):
                             # print(f'pid={selected_keys[b]}, before self.transforms, zonal_mask np.unique is {unique_values}')
                             # tmp solution: only applicable when the last input channel is mask
                             # stack [label, mask] together
