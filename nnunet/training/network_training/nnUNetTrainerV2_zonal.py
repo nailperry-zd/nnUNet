@@ -56,6 +56,11 @@ class nnUNetTrainerV2_zonal(nnUNetTrainer):
         super().process_plans(plans)
         # self.num_input_channels += 3  # for seg from zonal mask
 
+    def setup_DA_params(self):
+        super().setup_DA_params()
+        self.data_aug_params["move_last_seg_chanel_to_data"] = True
+        self.data_aug_params["all_segmentation_labels"] = [0, 1, 2]
+
     def initialize(self, training=True, force_load_plans=False):
         """
         - replaced get_default_augmentation with get_moreDA_augmentation
