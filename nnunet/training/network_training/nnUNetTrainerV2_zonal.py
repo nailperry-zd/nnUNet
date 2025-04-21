@@ -40,4 +40,5 @@ class nnUNetTrainerV2_zonal(nnUNetTrainerV2):
         super().setup_DA_params()
         self.data_aug_params["move_last_seg_chanel_to_data"] = True
         self.data_aug_params["all_segmentation_labels"] = [0, 1, 2]
+        self.data_aug_params['selected_seg_channels'] = None
 
