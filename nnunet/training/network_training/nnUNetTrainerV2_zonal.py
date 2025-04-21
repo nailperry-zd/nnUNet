@@ -51,7 +51,10 @@ class nnUNetTrainerV2_zonal(nnUNetTrainer):
         self.ds_loss_weights = None
 
         self.pin_memory = True
-        self.num_input_channels = 6
+
+    def process_plans(self, plans):
+        super().process_plans(plans)
+        # self.num_input_channels += 3  # for seg from zonal mask
 
     def initialize(self, training=True, force_load_plans=False):
         """

@@ -21,22 +21,17 @@ import numpy as np
 from batchgenerators.augmentations.utils import resize_segmentation
 from nnunet.inference.segmentation_export import save_segmentation_nifti_from_softmax, save_segmentation_nifti
 from batchgenerators.utilities.file_and_folder_operations import *
-import sys
-if 'win' in sys.platform:
-    #fix for windows platform
-    import pathos
-    Process = pathos.helpers.mp.Process
-    Queue = pathos.helpers.mp.Queue
-else:
-    from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue
 import torch
 import SimpleITK as sitk
 import shutil
+from picai_baseline.nndetection.training_docker import shutil_sol
 from multiprocessing import Pool
 from nnunet.postprocessing.connected_components import load_remove_save, load_postprocessing
 from nnunet.training.model_restore import load_model_and_checkpoint_files
 from nnunet.training.network_training.nnUNetTrainer import nnUNetTrainer
 from nnunet.utilities.one_hot_encoding import to_one_hot
+use_alt_resampling = False
 
 
 def preprocess_save_to_queue(preprocess_fn, q, list_of_lists, output_files, segs_from_prev_stage, classes,
@@ -65,7 +60,7 @@ def preprocess_save_to_queue(preprocess_fn, q, list_of_lists, output_files, segs
                                                                                  (l[0], segs_from_prev_stage[i])
                 seg_prev = seg_prev.transpose(transpose_forward)
                 seg_reshaped = resize_segmentation(seg_prev, d.shape[1:], order=1)
-                seg_reshaped = to_one_hot(seg_reshaped)
+                seg_reshaped = to_one_hot(seg_reshaped) # 3 classes
                 print(f"before integrating seg: {d.shape}")
                 print(f"integrating seg_reshaped: {seg_reshaped.shape}")
                 d = np.vstack((d, seg_reshaped)).astype(np.float32)
@@ -259,23 +254,29 @@ def predict_cases(model, list_of_lists, output_filenames, folds, save_npz, num_t
         patching system python code. We circumvent that problem here by saving softmax_pred to a npy file that will 
         then be read (and finally deleted) by the Process. save_segmentation_nifti_from_softmax can take either 
         filename or np.ndarray and will handle this automatically"""
-        bytes_per_voxel = 4
-        if all_in_gpu:
-            bytes_per_voxel = 2  # if all_in_gpu then the return value is half (float16)
-        if np.prod(softmax.shape) > (2e9 / bytes_per_voxel * 0.85):  # * 0.85 just to be save
-            print(
-                "This output is too large for python process-process communication. Saving output temporarily to disk")
-            np.save(output_filename[:-7] + ".npy", softmax)
-            softmax = output_filename[:-7] + ".npy"
-        # save_segmentation_nifti_from_softmax(softmax, output_filename, dct, interpolation_order, region_class_order,
-        #                                     None, None,
-        #                                     npz_file, None, force_separate_z, interpolation_order_z)
 
-        results.append(pool.starmap_async(save_segmentation_nifti_from_softmax,
-                                          ((softmax, output_filename, dct, interpolation_order, region_class_order,
-                                            None, None,
-                                            npz_file, None, force_separate_z, interpolation_order_z),)
-                                          ))
+        if use_alt_resampling:
+            save_segmentation_nifti_from_softmax(
+                softmax, output_filename, dct, interpolation_order, region_class_order,
+                None, None,
+                npz_file, None, force_separate_z, interpolation_order_z
+            )
+        else:
+            bytes_per_voxel = 4
+            if all_in_gpu:
+                bytes_per_voxel = 2  # if all_in_gpu then the return value is half (float16)
+
+            if np.prod(softmax.shape) > (2e9 / bytes_per_voxel * 0.85):  # * 0.85 just to be save
+                print(
+                    "This output is too large for python process-process communication. Saving output temporarily to disk")
+                np.save(output_filename[:-7] + ".npy", softmax)
+                softmax = output_filename[:-7] + ".npy"
+
+            results.append(pool.starmap_async(save_segmentation_nifti_from_softmax,
+                                            ((softmax, output_filename, dct, interpolation_order, region_class_order,
+                                                None, None,
+                                                npz_file, None, force_separate_z, interpolation_order_z),)
+                                            ))
 
     print("inference done. Now waiting for the segmentation export to finish...")
     _ = [i.get() for i in results]
@@ -286,7 +287,7 @@ def predict_cases(model, list_of_lists, output_filenames, folds, save_npz, num_t
         pp_file = join(model, "postprocessing.json")
         if isfile(pp_file):
             print("postprocessing...")
-            shutil.copy(pp_file, os.path.abspath(os.path.dirname(output_filenames[0])))
+            shutil_sol.copyfile(pp_file, os.path.abspath(os.path.dirname(output_filenames[0])))
             # for_which_classes stores for which of the classes everything but the largest connected component needs to be
             # removed
             for_which_classes, min_valid_obj_size = load_postprocessing(pp_file)
@@ -434,7 +435,7 @@ def predict_cases_fast(model, list_of_lists, output_filenames, folds, num_thread
         pp_file = join(model, "postprocessing.json")
         if isfile(pp_file):
             print("postprocessing...")
-            shutil.copy(pp_file, os.path.dirname(output_filenames[0]))
+            shutil_sol.copyfile(pp_file, os.path.dirname(output_filenames[0]))
             # for_which_classes stores for which of the classes everything but the largest connected component needs to be
             # removed
             for_which_classes, min_valid_obj_size = load_postprocessing(pp_file)
@@ -559,7 +560,7 @@ def predict_cases_fastest(model, list_of_lists, output_filenames, folds, num_thr
         pp_file = join(model, "postprocessing.json")
         if isfile(pp_file):
             print("postprocessing...")
-            shutil.copy(pp_file, os.path.dirname(output_filenames[0]))
+            shutil_sol.copyfile(pp_file, os.path.dirname(output_filenames[0]))
             # for_which_classes stores for which of the classes everything but the largest connected component needs to be
             # removed
             for_which_classes, min_valid_obj_size = load_postprocessing(pp_file)
@@ -639,7 +640,7 @@ def predict_from_folder(model: str, input_folder: str, output_folder: str, folds
     :return:
     """
     maybe_mkdir_p(output_folder)
-    shutil.copy(join(model, 'plans.pkl'), output_folder)
+    shutil_sol.copyfile(join(model, 'plans.pkl'), output_folder)
 
     assert isfile(join(model, "plans.pkl")), "Folder with saved model weights must contain a plans.pkl file"
     expected_num_modalities = load_pickle(join(model, "plans.pkl"))['num_modalities']
