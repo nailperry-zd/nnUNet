@@ -126,7 +126,7 @@ class FL_and_CE_loss(nn.Module):
             raise NotImplementedError("nah son")
         return result
 
-class nnUNetTrainerV2_zonal(nnUNetTrainerV2):
+class nnUNetTrainerV2_zonal_FL(nnUNetTrainerV2_zonal):
     """
     Info for Fabian: same as internal nnUNetTrainerV2_2
     """
