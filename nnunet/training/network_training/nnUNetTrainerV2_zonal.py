@@ -126,16 +126,6 @@ class FL_and_CE_loss(nn.Module):
             raise NotImplementedError("nah son")
         return result
 
-class nnUNetTrainerV2_zonal_FL(nnUNetTrainerV2_zonal):
-    """
-    Info for Fabian: same as internal nnUNetTrainerV2_2
-    """
-
-    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
-                 unpack_data=True, deterministic=True, fp16=False):
-        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage, unpack_data,
-                         deterministic, fp16)
-        self.loss = FL_and_CE_loss(alpha=0.5)
 
 class nnUNetTrainerV2_zonal(nnUNetTrainerV2):
     """
@@ -163,3 +153,14 @@ class nnUNetTrainerV2_zonal(nnUNetTrainerV2):
         self.data_aug_params["all_segmentation_labels"] = [0, 1, 2]
         self.data_aug_params['selected_seg_channels'] = None
 
+
+class nnUNetTrainerV2_zonal_FL(nnUNetTrainerV2_zonal):
+    """
+    Info for Fabian: same as internal nnUNetTrainerV2_2
+    """
+
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage, unpack_data,
+                         deterministic, fp16)
+        self.loss = FL_and_CE_loss(alpha=0.5)
