@@ -42,6 +42,7 @@ from nnunet.training.loss_functions.dice_loss import DC_and_CE_loss
 from nnunet.training.network_training.network_trainer import NetworkTrainer
 from nnunet.utilities.nd_softmax import softmax_helper
 from nnunet.utilities.tensor_utilities import sum_tensor
+from nnunet.utilities.visualize_data_seg import visualize_data_for_validation
 
 matplotlib.use("agg")
 
@@ -592,6 +593,7 @@ class nnUNetTrainer(NetworkTrainer):
                 for i, l in enumerate([0,1,2]):
                     seg_onehot[i][seg == l] = 1
                 data_c = np.concatenate((data[:-1], seg_onehot), 0)
+                visualize_data_for_validation(data_c, k)
 
                 print(k, data.shape)
                 data[-1][data[-1] == -1] = 0

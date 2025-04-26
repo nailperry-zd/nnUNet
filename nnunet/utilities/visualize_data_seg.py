@@ -4,6 +4,7 @@ from nnunet.paths import *
 FLAG_BEFORE_AUG = False
 FLAG_AFTER_AUG = False
 FLAG_DATA_FOR_PREDICTION = False
+FLAG_DATA_FOR_VALIDATION = False
 import time
 
 def save_volume_default(volume_arr, target_output):
@@ -51,6 +52,18 @@ def visualize_data_for_prediction(data, output_file_path):
         volume = data[b]
         save_volume_default(volume, new_file_path)
 
+def visualize_data_for_validation(data, key):
+    if not FLAG_DATA_FOR_VALIDATION:
+        return
+    print(f'visualize_data_for_validation data.shape is {data.shape}')
+    output_folder = os.path.join(network_training_output_dir, 'data_for_validation')
+    os.makedirs(output_folder, exist_ok=True)
+    for b in range(data.shape[0]):
+        # Construct the new file path
+        new_file_path = os.path.join(output_folder, fr'{key}_{i + 1}.nii.gz')
+        # Process each volume (18, 124, 124)
+        volume = data[b]
+        save_volume_default(volume, new_file_path)
 
 def visualize_data_seg_aug(data_list, seg_list):
     if not FLAG_AFTER_AUG:
