@@ -3,6 +3,7 @@ import SimpleITK as sitk
 from nnunet.paths import *
 FLAG_BEFORE_AUG = False
 FLAG_AFTER_AUG = False
+FLAG_DATA_FOR_PREDICTION = False
 import time
 
 def save_volume_default(volume_arr, target_output):
@@ -33,6 +34,23 @@ def visualize_data_seg(data, seg, selected_keys):
             # Process each volume (18, 124, 124)
             volume = data[b][i]
             save_volume_default(volume, os.path.join(output_folder, fr'{selected_keys[b]}_{i + 1}.nii.gz'))
+
+def visualize_data_for_prediction(data, output_file_path):
+    if not FLAG_DATA_FOR_PREDICTION:
+        return
+    # Extract the directory and filename
+    directory = os.path.dirname(output_file_path)
+    filename = os.path.basename(output_file_path)
+    os.makedirs(directory, exist_ok=True)
+    # Retrieve the base filename without extension
+    base_filename = os.path.splitext(filename)[0]  # e.g., 'rstrial_058'
+    for b in range(data.shape[0]):
+        # Construct the new file path
+        new_file_path = os.path.join(directory, f"{base_filename}_{b}.nii.gz")
+        # Process each volume (18, 124, 124)
+        volume = data[b]
+        save_volume_default(volume, new_file_path)
+
 
 def visualize_data_seg_aug(data_list, seg_list):
     if not FLAG_AFTER_AUG:
