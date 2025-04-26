@@ -60,7 +60,7 @@ def visualize_data_for_validation(data, key):
     os.makedirs(output_folder, exist_ok=True)
     for b in range(data.shape[0]):
         # Construct the new file path
-        new_file_path = os.path.join(output_folder, fr'{key}_{i + 1}.nii.gz')
+        new_file_path = os.path.join(output_folder, fr'{key}_{b + 1}.nii.gz')
         # Process each volume (18, 124, 124)
         volume = data[b]
         save_volume_default(volume, new_file_path)
