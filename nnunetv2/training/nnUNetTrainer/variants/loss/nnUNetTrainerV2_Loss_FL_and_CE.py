@@ -13,10 +13,11 @@
 #    limitations under the License.
 
 from nnunet.training.loss_functions.crossentropy import RobustCrossEntropyLoss
-from nnunet.training.network_training.nnUNet_variants.loss_function.nnUNetTrainerV2_focalLoss import \
-    FocalLoss
 from nnunet.training.network_training.nnUNetTrainerV2 import nnUNetTrainerV2
 from torch import nn
+
+from nnunetv2.training.nnUNetTrainer.variants.loss.nnUNetTrainerV2_focalLoss import FocalLoss
+
 
 # TODO: replace FocalLoss by fixed implemetation (and set smooth=0 in that one?)
 
