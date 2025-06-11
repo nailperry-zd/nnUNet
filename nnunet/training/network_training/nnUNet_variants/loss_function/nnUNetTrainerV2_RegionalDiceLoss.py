@@ -133,7 +133,7 @@ class Region_DC_and_CE_loss(nn.Module):
         :param weight_ce:
         :param weight_dice:
         """
-        super(DC_and_CE_loss, self).__init__()
+        super().__init__()
         if ignore_label is not None:
             assert not square_dice, 'not implemented'
             ce_kwargs['reduction'] = 'none'
