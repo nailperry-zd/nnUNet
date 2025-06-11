@@ -91,7 +91,7 @@ class Adaptive_Region_Specific_TverskyLoss(nn.Module):
 
         # Dynamically calculate output size and create pool
         output_size = self.get_dynamic_output_size(shp_x)
-        print(f"dynamic output_size = {output_size}")
+        print(f"dynamic output_size = {output_size} for input_size = {shp_x}")
         if dim == 3:
             pool = nn.AdaptiveAvgPool3d(output_size)
         elif dim == 2:
@@ -179,6 +179,7 @@ class Region_DC_and_CE_loss(nn.Module):
         else:
             raise NotImplementedError("nah son") # reserved for other stuff (later)
         return result
+
 class nnUNetTrainerV2_RegionalDiceLoss(nnUNetTrainerV2):
     def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
                  unpack_data=True, deterministic=True, fp16=False):
