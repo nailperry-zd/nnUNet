@@ -149,7 +149,7 @@ class Region_DC_and_CE_loss(nn.Module):
 
         self.ignore_label = ignore_label
 
-        self.dc = Adaptive_Region_Specific_TverskyLoss(target_patch_hw=20, **soft_dice_kwargs)
+        self.dc = Adaptive_Region_Specific_TverskyLoss(**soft_dice_kwargs)
 
 
     def forward(self, net_output, target):
@@ -185,6 +185,14 @@ class nnUNetTrainerV2_RegionalDiceLoss(nnUNetTrainerV2):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
                                               unpack_data, deterministic, fp16)
         print("Setting up self.loss = RegionalDiceLoss")
-        self.loss = Region_DC_and_CE_loss({'batch_dice': self.batch_dice, 'smooth': 1e-5, 'do_bg': False}, {})
+        self.loss = Region_DC_and_CE_loss({'target_patch_hw': 20, 'batch_dice': self.batch_dice, 'smooth': 1e-5, 'do_bg': False}, {})
+
+class nnUNetTrainerV2_RegionalDiceLoss_patchhw320(nnUNetTrainerV2):
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
+                                              unpack_data, deterministic, fp16)
+        print("Setting up self.loss = RegionalDiceLoss")
+        self.loss = Region_DC_and_CE_loss({'target_patch_hw': 320, 'batch_dice': self.batch_dice, 'smooth': 1e-5, 'do_bg': False}, {})
 
 
