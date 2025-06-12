@@ -331,6 +331,7 @@ class DC_and_CE_loss(nn.Module):
             self.dc = SoftDiceLossSquared(apply_nonlin=softmax_helper, **soft_dice_kwargs)
 
     def forward(self, net_output, target):
+        print(f"y_pred.shape={net_output.shape}, y_true.shape={target.shape}")
         """
         target must be b, c, x, y(, z) with c=1
         :param net_output:
@@ -349,6 +350,7 @@ class DC_and_CE_loss(nn.Module):
         if self.log_dice:
             dc_loss = -torch.log(-dc_loss)
 
+        print(f"dc_loss loss is {dc_loss}")
         ce_loss = self.ce(net_output, target[:, 0].long()) if self.weight_ce != 0 else 0
         if self.ignore_label is not None:
             ce_loss *= mask[:, 0]
