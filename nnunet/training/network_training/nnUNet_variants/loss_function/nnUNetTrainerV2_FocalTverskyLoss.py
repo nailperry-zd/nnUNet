@@ -111,5 +111,5 @@ class nnUNetTrainerV2_FocalTverskyDiceLoss(nnUNetTrainerV2):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
                                               unpack_data, deterministic, fp16)
         print("Setting up self.loss = FocalTverskyDiceLoss")
-        self.loss = FocalTversky_DC_and_CE_loss({"alpha": 0.4, "beta": 0.3, "gamma": 1, 'batch_dice': self.batch_dice, 'smooth': 1e-5, 'do_bg': False}, {})
+        self.loss = FocalTversky_DC_and_CE_loss({"alpha": 0.4, "beta": 0.3, "gamma": 1, 'do_bg': False}, {})
 
