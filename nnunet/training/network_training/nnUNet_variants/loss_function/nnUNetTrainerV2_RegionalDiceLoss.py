@@ -58,6 +58,7 @@ class Adaptive_Region_Specific_TverskyLoss(nn.Module):
             raise ValueError("Invalid input shape. Expected 4D or 5D tensor.")
 
     def forward(self, x, y):
+        print(f"y_pred.shape={x.shape}, y_true.shape={y.shape}")
         # 2D/3D: [batchsize, c, (z,) x, y]
         if self.apply_nonlin:
             x = torch.softmax(x, dim=1)
