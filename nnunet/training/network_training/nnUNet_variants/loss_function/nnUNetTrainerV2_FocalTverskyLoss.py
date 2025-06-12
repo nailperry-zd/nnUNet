@@ -30,6 +30,7 @@ class FocalTverskyLoss(nn.Module):
         self.batch_dice = batch_dice
 
     def forward(self, y_pred, y_true):
+        print(f"y_pred.shape={y_pred.shape}, y_true.shape={y_true.shape}")
         # Ensure the predictions are in the same dimension as y_true
         # y_pred = torch.sigmoid(y_pred)
         y_pred = torch.softmax(y_pred, dim=1)
@@ -48,8 +49,9 @@ class FocalTverskyLoss(nn.Module):
 
         # Calculate the Focal Tversky loss
         loss = (1 - tversky_index).pow(self.gamma)
-
-        return loss.mean()
+        loss_ret = loss.mean()
+        print(f"loss_ret={loss_ret}")
+        return loss_ret
 
 class FocalTversky_DC_and_CE_loss(nn.Module):
     def __init__(self, soft_dice_kwargs, ce_kwargs, aggregate="sum", square_dice=False, weight_ce=1, weight_dice=1,
