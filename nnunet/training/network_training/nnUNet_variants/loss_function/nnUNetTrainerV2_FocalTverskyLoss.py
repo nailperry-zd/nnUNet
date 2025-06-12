@@ -20,8 +20,9 @@ import math
 from nnunet.training.loss_functions.crossentropy import RobustCrossEntropyLoss
 
 class FocalTverskyLoss(nn.Module):
-    def __init__(self, alpha=0.7, beta=0.3, gamma=0.75, do_bg=True, batch_dice=True):
+    def __init__(self, smooth=1e-5, alpha=0.7, beta=0.3, gamma=0.75, do_bg=True, batch_dice=True):
         super(FocalTverskyLoss, self).__init__()
+        self.smooth = smooth
         self.alpha = alpha
         self.beta = beta
         self.gamma = gamma
@@ -43,7 +44,7 @@ class FocalTverskyLoss(nn.Module):
         fn = (y_true * (1 - y_pred)).sum(dim=(2, 3, 4))
         fp = ((1 - y_true) * y_pred).sum(dim=(2, 3, 4))
 
-        tversky_index = tp / (tp + self.alpha * fn + self.beta * fp)
+        tversky_index = (tp + self.smooth) / (tp + self.alpha * fn + self.beta * fp + self.smooth)
 
         # Calculate the Focal Tversky loss
         loss = (1 - tversky_index).pow(self.gamma)
@@ -111,5 +112,5 @@ class nnUNetTrainerV2_FocalTverskyDiceLoss(nnUNetTrainerV2):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
                                               unpack_data, deterministic, fp16)
         print("Setting up self.loss = FocalTverskyDiceLoss")
-        self.loss = FocalTversky_DC_and_CE_loss({"alpha": 0.4, "beta": 0.3, "gamma": 1, 'do_bg': False}, {})
+        self.loss = FocalTversky_DC_and_CE_loss({"alpha": 0.4, "beta": 0.3, "gamma": 1, 'batch_dice': self.batch_dice, 'smooth': 1e-5, 'do_bg': False}, {})
 
