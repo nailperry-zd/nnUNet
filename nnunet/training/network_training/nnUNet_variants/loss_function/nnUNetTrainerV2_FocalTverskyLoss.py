@@ -37,7 +37,6 @@ class FocalTverskyLoss(nn.Module):
 
         if not self.do_bg:
             y_pred = y_pred[:, 1:]
-            y_true = y_true[:, 1:]
 
 
         # Calculate the Tversky loss
