@@ -165,6 +165,7 @@ class SoftDiceLoss(nn.Module):
         self.smooth = smooth
 
     def forward(self, x, y, loss_mask=None):
+        print(f"y_pred.shape={x.shape}, y_true.shape={y.shape}")
         shp_x = x.shape
 
         if self.batch_dice:
@@ -189,6 +190,7 @@ class SoftDiceLoss(nn.Module):
                 dc = dc[:, 1:]
         dc = dc.mean()
 
+        print(f"dc loss is {dc}")
         return -dc
 
 

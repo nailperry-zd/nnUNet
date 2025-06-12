@@ -124,6 +124,8 @@ class Adaptive_Region_Specific_TverskyLoss(nn.Module):
 
         region_tversky = region_tversky.mean()
 
+        print(f"region_tversky loss is {region_tversky}")
+
         return region_tversky
 
 class Region_DC_and_CE_loss(nn.Module):
