@@ -112,6 +112,8 @@ class Adaptive_Region_Specific_TverskyLoss(nn.Module):
         alpha = self.A + self.B * (region_fp + self.smooth) / (region_fp + region_fn + self.smooth)
         beta = self.A + self.B * (region_fn + self.smooth) / (region_fp + region_fn + self.smooth)
 
+        print(f"adaptive alpha:{alpha}, beta:{beta}")
+
         # [(batchsize,) class_num, (num_region_per_axis_z,) num_region_per_axis_x, num_region_per_axis_y]
         region_tversky = (region_tp + self.smooth) / (region_tp + alpha * region_fp + beta * region_fn + self.smooth)
         region_tversky = 1 - region_tversky
