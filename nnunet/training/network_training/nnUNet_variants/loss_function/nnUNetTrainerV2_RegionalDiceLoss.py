@@ -119,12 +119,12 @@ class Adaptive_Region_Specific_TverskyLoss(nn.Module):
         region_tversky = 1 - region_tversky
 
         # [(batchsize,) class_num]
-        # if self.batch_dice:
-        #     region_tversky = region_tversky.sum(list(range(1, len(shp_x)-1)))
-        # else:
-        #     region_tversky = region_tversky.sum(list(range(2, len(shp_x))))
+        if self.batch_dice:
+            region_tversky = region_tversky.sum(list(range(1, len(shp_x)-1)))
+        else:
+            region_tversky = region_tversky.sum(list(range(2, len(shp_x))))
 
-        region_tversky = region_tversky.mean()
+        # region_tversky = region_tversky.mean()
 
         print(f"region_tversky loss is {region_tversky}")
 
