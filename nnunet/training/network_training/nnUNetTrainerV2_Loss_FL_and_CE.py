@@ -67,6 +67,17 @@ class nnUNetTrainerV2_Loss_FL_and_CE_checkpoints_FL0(nnUNetTrainerV2):
         self.loss = FL_and_CE_loss(alpha=0)
         self.save_latest_only = False
 
+class nnUNetTrainerV2_Loss_FL_and_CE_checkpoints_FL10(nnUNetTrainerV2):
+    """
+    Set loss to FL + CE and set checkpoints
+    """
+
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage, unpack_data,
+                         deterministic, fp16)
+        self.loss = FL_and_CE_loss(alpha=1.0)
+        self.save_latest_only = False
 
 class nnUNetTrainerV2_Loss_FL_and_CE_checkpoints2(nnUNetTrainerV2_Loss_FL_and_CE_checkpoints):
     """
