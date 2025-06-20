@@ -23,8 +23,8 @@ class SymmetricSelfPacedLearning(nn.Module):
     def forward(self, loss, difficulty):
         weight_matrix = self.compute_weight_matrix(difficulty)
         loss = loss * weight_matrix
-        print(f"weight_matrix={weight_matrix}")
-        print(f"difficulty={difficulty}")
+        print(f"weight_matrix={weight_matrix}, device={weight_matrix.device}")
+        print(f"difficulty={difficulty}, device={difficulty.device}")
         loss = loss.mean()
         return loss
 
@@ -53,7 +53,7 @@ class SoftDiceLoss_SPL(nn.Module):
 
     def forward(self, x, y, current_epoch):
         dice_index = self.dice(x, y)
-        print(f"dc score is {dice_index}")
+        print(f"dc score is {dice_index}, device={dice_index.device}")
         dice_loss = 1 - dice_index
         difficulty = 1 - dice_index
         spl = SymmetricSelfPacedLearning(current_epoch)
