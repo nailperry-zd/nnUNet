@@ -29,7 +29,8 @@ class SymmetricSelfPacedLearning(nn.Module):
         return loss
 
     def compute_weight_matrix(self, example_difficulty):
-        weight_matrix = self.weight_first + example_difficulty * (self.weight_last - self.weight_first)
+        weight_matrix = torch.ones_like(example_difficulty)
+        # weight_matrix = self.weight_first + example_difficulty * (self.weight_last - self.weight_first)
         return weight_matrix
 
     # def compute_weight_matrix(self, example_difficulty):
