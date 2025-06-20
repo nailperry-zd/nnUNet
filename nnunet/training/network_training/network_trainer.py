@@ -464,7 +464,7 @@ class NetworkTrainer(object):
                 self.network.eval()
                 val_losses = []
                 for b in range(self.num_val_batches_per_epoch):
-                    l = self.run_iteration(self.val_gen, False, True)
+                    l = self.run_iteration(self.val_gen, self.epoch, False, True)
                     val_losses.append(l)
                 self.all_val_losses.append(np.mean(val_losses))
                 self.print_to_log_file("validation loss: %.4f" % self.all_val_losses[-1])
@@ -474,7 +474,7 @@ class NetworkTrainer(object):
                     # validation with train=True
                     val_losses = []
                     for b in range(self.num_val_batches_per_epoch):
-                        l = self.run_iteration(self.val_gen, False)
+                        l = self.run_iteration(self.val_gen, self.epoch, False)
                         val_losses.append(l)
                     self.all_val_losses_tr_mode.append(np.mean(val_losses))
                     self.print_to_log_file("validation loss (train=True): %.4f" % self.all_val_losses_tr_mode[-1])
@@ -652,45 +652,6 @@ class NetworkTrainer(object):
             output = self.network(data)
             del data
             l = self.loss(output, target, current_epoch)
-
-            if do_backprop:
-                l.backward()
-                self.optimizer.step()
-
-        if run_online_evaluation:
-            self.run_online_evaluation(output, target)
-
-        del target
-
-        return l.detach().cpu().numpy()
-    def run_iteration(self, data_generator, do_backprop=True, run_online_evaluation=False):
-        data_dict = next(data_generator)
-        data = data_dict['data']
-        target = data_dict['target']
-
-        data = maybe_to_torch(data)
-        target = maybe_to_torch(target)
-
-        if torch.cuda.is_available():
-            data = to_cuda(data)
-            target = to_cuda(target)
-
-        self.optimizer.zero_grad()
-
-        if self.fp16:
-            with autocast():
-                output = self.network(data)
-                del data
-                l = self.loss(output, target)
-
-            if do_backprop:
-                self.amp_grad_scaler.scale(l).backward()
-                self.amp_grad_scaler.step(self.optimizer)
-                self.amp_grad_scaler.update()
-        else:
-            output = self.network(data)
-            del data
-            l = self.loss(output, target)
 
             if do_backprop:
                 l.backward()
