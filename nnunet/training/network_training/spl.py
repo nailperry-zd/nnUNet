@@ -59,9 +59,11 @@ class SoftDiceLoss_SPL(nn.Module):
         spl = SymmetricSelfPacedLearning(current_epoch)
         weighted_loss = spl(dice_loss, difficulty)
         if current_epoch > self.epoch_for_weighting:
+            print("dynamically weighted")
+            return weighted_loss
+        else:
             print("equally weighted")
             return dice_loss.mean()
-        return weighted_loss
 
 
 class FocalLossNonBatch_SPL(nn.Module):
@@ -94,9 +96,12 @@ class FocalLossNonBatch_SPL(nn.Module):
         spl = SymmetricSelfPacedLearning(current_epoch)
         weighted_loss = spl(dice_index, difficulty)
         if current_epoch > self.epoch_for_weighting:
+            print("dynamically weighted")
+            return weighted_loss
+        else:
             print("equally weighted")
             return result_fl.mean()
-        return weighted_loss
+
 
 class nnUNetTrainerV2_SoftDiceLoss_SPL(nnUNetTrainerV2):
     def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
