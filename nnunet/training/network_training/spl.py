@@ -46,10 +46,10 @@ class SymmetricSelfPacedLearning(nn.Module):
 
 
 class SoftDiceLoss_SPL(nn.Module):
-    def __init__(self, soft_dice_kwargs, baseline=False):
+    def __init__(self, soft_dice_kwargs, epoch_for_weighting=0):
         super().__init__()
         self.dice = SoftDice(apply_nonlin=softmax_helper, **soft_dice_kwargs)
-        self.baseline = baseline
+        self.epoch_for_weighting = epoch_for_weighting
 
     def forward(self, x, y, current_epoch):
         dice_index = self.dice(x, y)
@@ -58,8 +58,8 @@ class SoftDiceLoss_SPL(nn.Module):
         difficulty = 1 - dice_index
         spl = SymmetricSelfPacedLearning(current_epoch)
         weighted_loss = spl(dice_loss, difficulty)
-        if self.baseline:
-            print("baseline")
+        if current_epoch > self.epoch_for_weighting:
+            print("equally weighted")
             return dice_loss.mean()
         return weighted_loss
 
@@ -79,11 +79,11 @@ class FocalLossNonBatch_SPL(nn.Module):
     :param size_average: (bool, optional) By default, the losses are averaged over each loss element in the batch.
     """
 
-    def __init__(self, fl_kwargs, soft_dice_kwargs, baseline=False):
+    def __init__(self, fl_kwargs, soft_dice_kwargs, epoch_for_weighting=0):
         super().__init__()
         self.fl = FocalLossNonBatch(apply_nonlin=softmax_helper, **fl_kwargs)
         self.dice = SoftDice(apply_nonlin=softmax_helper, **soft_dice_kwargs)
-        self.baseline = baseline
+        self.epoch_for_weighting = epoch_for_weighting
 
     def forward(self, logit, target, current_epoch):
         result_fl = self.fl(logit, target)
@@ -93,8 +93,8 @@ class FocalLossNonBatch_SPL(nn.Module):
         difficulty = 1 - dice_index
         spl = SymmetricSelfPacedLearning(current_epoch)
         weighted_loss = spl(dice_index, difficulty)
-        if self.baseline:
-            print("baseline")
+        if current_epoch > self.epoch_for_weighting:
+            print("equally weighted")
             return result_fl.mean()
         return weighted_loss
 
@@ -112,7 +112,7 @@ class nnUNetTrainerV2_SoftDiceLoss_SPL_Baseline(nnUNetTrainerV2):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
                                               unpack_data, deterministic, fp16)
         print("Setting up self.loss = SoftDiceLoss_SPL_Baseline")
-        self.loss = SoftDiceLoss_SPL({'batch_dice': False, 'smooth': 1e-5, 'do_bg': False}, baseline=True)
+        self.loss = SoftDiceLoss_SPL({'batch_dice': False, 'smooth': 1e-5, 'do_bg': False}, epoch_for_weighting=1000)
 
 class nnUNetTrainerV2_FocalLossNonBatch_SPL(nnUNetTrainerV2):
     def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
@@ -128,7 +128,7 @@ class nnUNetTrainerV2_FocalLossNonBatch_SPL_Baseline(nnUNetTrainerV2):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
                                               unpack_data, deterministic, fp16)
         print("Setting up self.loss = FocalLossNonBatch_SPL_Baseline")
-        self.loss = FocalLossNonBatch_SPL({}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False}, baseline=True)
+        self.loss = FocalLossNonBatch_SPL({}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False}, epoch_for_weighting=1000)
 
 
 if __name__ == "__main__":
