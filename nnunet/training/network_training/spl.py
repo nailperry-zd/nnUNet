@@ -22,6 +22,7 @@ class SymmetricSelfPacedLearning(nn.Module):
 
     def forward(self, loss, difficulty):
         weight_matrix = self.compute_weight_matrix(difficulty)
+        weight_matrix = weight_matrix.detach()
         loss = loss * weight_matrix
         print(f"weight_matrix={weight_matrix}, device={weight_matrix.device}")
         print(f"difficulty={difficulty}, device={difficulty.device}")
