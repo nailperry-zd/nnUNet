@@ -89,9 +89,9 @@ class FocalLossNonBatch_SPL(nn.Module):
 
     def forward(self, logit, target, current_epoch):
         result_fl = self.fl(logit, target)
-        print(f"FocalLoss is {result_fl}")
+        print(f"FocalLoss is {result_fl}, device={result_fl.device}")
         dice_index = self.dice(logit, target)
-        print(f"dc score is {dice_index}")
+        print(f"dc score is {dice_index}, device={dice_index.device}")
         difficulty = 1 - dice_index
         spl = SymmetricSelfPacedLearning(current_epoch)
         weighted_loss = spl(dice_index, difficulty)
