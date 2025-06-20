@@ -13,7 +13,7 @@ class SymmetricSelfPacedLearning(nn.Module):
     def __init__(self, current_epoch):
         super().__init__()
         self.eta = 1
-        self.current_epoch = current_epoch
+        self.current_epoch = current_epoch + 1
         # self.epoch_step_size = 2 / (1000 - 1)
         self.epoch_step_size = 2 / 1000
         self.weight_first = 2 - self.current_epoch * self.epoch_step_size
@@ -55,12 +55,12 @@ class SoftDiceLoss_SPL(nn.Module):
         dice_index = self.dice(x, y)
         print(f"dc score is {dice_index}")
         dice_loss = 1 - dice_index
-        if self.baseline:
-            print("baseline")
-            return dice_loss.mean()
         difficulty = 1 - dice_index
         spl = SymmetricSelfPacedLearning(current_epoch)
         weighted_loss = spl(dice_loss, difficulty)
+        if self.baseline:
+            print("baseline")
+            return dice_loss.mean()
         return weighted_loss
 
 
@@ -88,14 +88,14 @@ class FocalLossNonBatch_SPL(nn.Module):
     def forward(self, logit, target, current_epoch):
         result_fl = self.fl(logit, target)
         print(f"FocalLoss is {result_fl}")
-        if self.baseline:
-            print("baseline")
-            return result_fl.mean()
         dice_index = self.dice(logit, target)
         print(f"dc score is {dice_index}")
         difficulty = 1 - dice_index
         spl = SymmetricSelfPacedLearning(current_epoch)
         weighted_loss = spl(dice_index, difficulty)
+        if self.baseline:
+            print("baseline")
+            return result_fl.mean()
         return weighted_loss
 
 class nnUNetTrainerV2_SoftDiceLoss_SPL(nnUNetTrainerV2):
