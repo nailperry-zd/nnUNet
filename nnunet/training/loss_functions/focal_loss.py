@@ -108,7 +108,7 @@ class FocalLossNonBatch(nn.Module):
                 loss = loss.sum()
 
             results[b] = loss
-        return results
+        return results.cuda()
 
 # taken from https://github.com/JunMa11/SegLoss/blob/master/test/nnUNetV2/loss_functions/focal_loss.py
 class FocalLoss(nn.Module):
