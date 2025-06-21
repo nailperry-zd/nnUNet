@@ -60,10 +60,10 @@ class SoftDiceLoss_SPL(nn.Module):
         spl = SymmetricSelfPacedLearning(current_epoch)
         weighted_loss = spl(dice_loss, difficulty)
         if do_backprop and current_epoch > self.epoch_for_weighting:
-            print("dynamically weighted")
+            print(f"dynamically weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
             return weighted_loss
         else:
-            print("equally weighted")
+            print(f"equally weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
             return dice_loss.mean()
 
 
@@ -97,10 +97,10 @@ class FocalLossNonBatch_SPL(nn.Module):
         spl = SymmetricSelfPacedLearning(current_epoch)
         weighted_loss = spl(dice_index, difficulty)
         if do_backprop and current_epoch > self.epoch_for_weighting:
-            print("dynamically weighted")
+            print(f"dynamically weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
             return weighted_loss
         else:
-            print("equally weighted")
+            print(f"equally weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
             return result_fl.mean()
 
 
