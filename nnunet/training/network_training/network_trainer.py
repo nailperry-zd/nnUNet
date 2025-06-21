@@ -642,7 +642,7 @@ class NetworkTrainer(object):
             with autocast():
                 output = self.network(data)
                 del data
-                l = self.loss(output, target, current_epoch)
+                l = self.loss(output, target, current_epoch, do_backprop)
 
             if do_backprop:
                 self.amp_grad_scaler.scale(l).backward()
@@ -651,7 +651,7 @@ class NetworkTrainer(object):
         else:
             output = self.network(data)
             del data
-            l = self.loss(output, target, current_epoch)
+            l = self.loss(output, target, current_epoch, do_backprop)
 
             if do_backprop:
                 l.backward()

@@ -52,14 +52,14 @@ class SoftDiceLoss_SPL(nn.Module):
         self.dice = SoftDice(apply_nonlin=softmax_helper, **soft_dice_kwargs)
         self.epoch_for_weighting = epoch_for_weighting
 
-    def forward(self, x, y, current_epoch):
+    def forward(self, x, y, current_epoch, do_backprop):
         dice_index = self.dice(x, y)
         print(f"dc score is {dice_index}, device={dice_index.device}")
         dice_loss = 1 - dice_index
         difficulty = 1 - dice_index
         spl = SymmetricSelfPacedLearning(current_epoch)
         weighted_loss = spl(dice_loss, difficulty)
-        if current_epoch > self.epoch_for_weighting:
+        if do_backprop and current_epoch > self.epoch_for_weighting:
             print("dynamically weighted")
             return weighted_loss
         else:
@@ -88,7 +88,7 @@ class FocalLossNonBatch_SPL(nn.Module):
         self.dice = SoftDice(apply_nonlin=softmax_helper, **soft_dice_kwargs)
         self.epoch_for_weighting = epoch_for_weighting
 
-    def forward(self, logit, target, current_epoch):
+    def forward(self, logit, target, current_epoch, do_backprop):
         result_fl = self.fl(logit, target)
         print(f"FocalLoss is {result_fl}, device={result_fl.device}")
         dice_index = self.dice(logit, target)
@@ -96,7 +96,7 @@ class FocalLossNonBatch_SPL(nn.Module):
         difficulty = 1 - dice_index
         spl = SymmetricSelfPacedLearning(current_epoch)
         weighted_loss = spl(dice_index, difficulty)
-        if current_epoch > self.epoch_for_weighting:
+        if do_backprop and current_epoch > self.epoch_for_weighting:
             print("dynamically weighted")
             return weighted_loss
         else:
