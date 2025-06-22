@@ -656,6 +656,8 @@ class NetworkTrainer(object):
             if do_backprop:
                 l.backward()
                 self.optimizer.step()
+                print("Gradient of input data:", data.grad)
+                print("Gradient of input data-l2_norm:", np.linalg.norm(data.grad))
 
         if run_online_evaluation:
             self.run_online_evaluation(output, target)
