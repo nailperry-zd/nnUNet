@@ -254,6 +254,8 @@ class nnUNetTrainerV2(nnUNetTrainer):
                 torch.nn.utils.clip_grad_norm_(self.network.parameters(), 12)
                 self.amp_grad_scaler.step(self.optimizer)
                 self.amp_grad_scaler.update()
+                print("Gradient of input data:", data.grad)
+                print("Gradient of input data-l2_norm:", np.linalg.norm(data.grad))
         else:
             output = self.network(data)
             del data
