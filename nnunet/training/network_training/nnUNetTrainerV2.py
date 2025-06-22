@@ -245,7 +245,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
         if self.fp16:
             with autocast():
                 output = self.network(data)
-                del data
+                # del data
                 l = self.loss(output, target, current_epoch, do_backprop)
 
             if do_backprop:
@@ -256,6 +256,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
                 self.amp_grad_scaler.update()
                 print("Gradient of input data:", data.grad)
                 print("Gradient of input data-l2_norm:", np.linalg.norm(data.grad))
+                del data
         else:
             output = self.network(data)
             del data
