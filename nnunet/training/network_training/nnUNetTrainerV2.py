@@ -232,6 +232,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
         data_dict = next(data_generator)
         data = data_dict['data']
         target = data_dict['target']
+        keys = data_dict['keys']
 
         data = maybe_to_torch(data)
         target = maybe_to_torch(target)
@@ -255,12 +256,15 @@ class nnUNetTrainerV2(nnUNetTrainer):
                 torch.nn.utils.clip_grad_norm_(self.network.parameters(), 12)
                 self.amp_grad_scaler.step(self.optimizer)
                 self.amp_grad_scaler.update()
-                if data.requires_grad:
-                    print("data has requires_grad=True")
-                else:
-                    print("data does not have requires_grad")
-                print("Gradient of input data:", data.grad)
-                print("Gradient of input data-l2_norm:", np.linalg.norm(data.grad))
+
+                # Calculate the L2 norm for each batch
+                data_grad = data.grad.cpu().numpy()
+                for i in range(data_grad.shape[0]):  # Iterate over each batch
+                    norm = np.linalg.norm(data_grad[i])  # Calculate L2 norm
+                    self.gradients_map[keys[i]] = norm
+
+                # Print the L2 norm for each batch
+                # print(f"Gradient of input data:{self.gradients_map}")
                 del data
         else:
             output = self.network(data)
