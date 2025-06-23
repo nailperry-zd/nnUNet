@@ -27,6 +27,7 @@ class SymmetricSelfPacedLearning(nn.Module):
         for i, key in enumerate(keys):
             weight_matrix[i] = self.weight_map[key]
         print(f"weight_matrix={weight_matrix}, device={weight_matrix.device}")
+        weight_matrix.to(loss.device)
         loss = loss * weight_matrix
         return loss
 
