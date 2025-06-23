@@ -244,6 +244,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
 
         if self.fp16:
             with autocast():
+                data.requires_grad_()
                 output = self.network(data)
                 # del data
                 l = self.loss(output, target, current_epoch, do_backprop)
