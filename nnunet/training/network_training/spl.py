@@ -23,11 +23,10 @@ class SymmetricSelfPacedLearning(nn.Module):
 
     def forward(self, loss, keys):
         weight_matrix = torch.ones(len(keys))
-        weight_matrix = weight_matrix.detach()
         for i, key in enumerate(keys):
             weight_matrix[i] = self.weight_map[key]
         print(f"weight_matrix={weight_matrix}, device={weight_matrix.device}")
-        weight_matrix.to(loss.device)
+        weight_matrix = weight_matrix.to(loss.device).detach()
         loss = loss * weight_matrix
         return loss
 
