@@ -6,11 +6,11 @@ from nnunet.training.loss_functions.dice_loss import SoftDice
 from nnunet.training.loss_functions.focal_loss import FocalLossNonBatch
 from nnunet.training.network_training.nnUNetTrainerV2 import nnUNetTrainerV2
 
-
 softmax_helper = lambda x: F.softmax(x, 1)
 
+
 class SymmetricSelfPacedLearning(nn.Module):
-    def __init__(self, current_epoch):
+    def __init__(self, current_epoch, gradients_map):
         super().__init__()
         self.eta = 1
         self.current_epoch = current_epoch + 1
@@ -19,31 +19,34 @@ class SymmetricSelfPacedLearning(nn.Module):
         self.weight_first = 2 - self.current_epoch * self.epoch_step_size
         self.weight_last = 2 - self.weight_first
         print(f"weight_first = {self.weight_first}, weight_last={self.weight_last}")
+        self.weight_map = self.compute_weight_map(gradients_map)
 
-    def forward(self, loss, difficulty):
-        weight_matrix = self.compute_weight_matrix(difficulty)
+    def forward(self, loss, keys):
+        weight_matrix = torch.ones(len(keys))
         weight_matrix = weight_matrix.detach()
-        loss = loss * weight_matrix
+        for i, key in enumerate(keys):
+            weight_matrix[i] = self.weight_map[key]
         print(f"weight_matrix={weight_matrix}, device={weight_matrix.device}")
-        print(f"difficulty={difficulty}, device={difficulty.device}")
-        loss = loss.mean()
+        loss = loss * weight_matrix
         return loss
 
-    def compute_weight_matrix(self, example_difficulty):
-        weight_matrix = self.weight_first + example_difficulty * (self.weight_last - self.weight_first)
-        return weight_matrix
+    def compute_weight_map(self, difficulty_map):
+        # Sort example_difficulty based on values
+        sorted_items = sorted(difficulty_map.items(), key=lambda item: item[1])
+        sorted_indices = [item[0] for item in sorted_items]  # Get indices based on sorted keys
 
-    # def compute_weight_matrix(self, example_difficulty):
-    #     batch_step_size = (self.weight_first - self.weight_last) / (
-    #             len(example_difficulty) - 1
-    #     )
-    #     weight_matrix = torch.zeros_like(example_difficulty)
-    #     indices = torch.argsort(example_difficulty)
-    #
-    #     for i, index in enumerate(indices):
-    #         weight_matrix[index] = self.weight_first - batch_step_size * i
-    #
-    #     return weight_matrix
+        # Calculate the batch step size
+        batch_step_size = (self.weight_first - self.weight_last) / (len(difficulty_map) - 1)
+
+        # Initialize weight_matrix
+        weight_map = {}
+
+        # Compute weights based on sorted order
+        for i, index in enumerate(sorted_indices):
+            weight = self.weight_first - batch_step_size * i
+            weight_map[index] = weight
+
+        return weight_map
 
 
 class SoftDiceLoss_SPL(nn.Module):
@@ -52,16 +55,15 @@ class SoftDiceLoss_SPL(nn.Module):
         self.dice = SoftDice(apply_nonlin=softmax_helper, **soft_dice_kwargs)
         self.epoch_for_weighting = epoch_for_weighting
 
-    def forward(self, x, y, current_epoch, do_backprop):
+    def forward(self, x, y, current_epoch, do_backprop, keys, gradients_map):
         dice_index = self.dice(x, y)
         print(f"dc score is {dice_index}, device={dice_index.device}")
         dice_loss = 1 - dice_index
-        difficulty = 1 - dice_index
-        spl = SymmetricSelfPacedLearning(current_epoch)
-        weighted_loss = spl(dice_loss, difficulty)
         if do_backprop and current_epoch > self.epoch_for_weighting:
+            spl = SymmetricSelfPacedLearning(current_epoch, gradients_map)
+            weighted_loss = spl(dice_loss, keys)
             print(f"dynamically weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
-            return weighted_loss
+            return weighted_loss.mean()
         else:
             print(f"equally weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
             return dice_loss.mean()
@@ -88,17 +90,16 @@ class FocalLossNonBatch_SPL(nn.Module):
         self.dice = SoftDice(apply_nonlin=softmax_helper, **soft_dice_kwargs)
         self.epoch_for_weighting = epoch_for_weighting
 
-    def forward(self, logit, target, current_epoch, do_backprop):
+    def forward(self, logit, target, current_epoch, do_backprop, keys, gradients_map):
         result_fl = self.fl(logit, target)
         print(f"FocalLoss is {result_fl}, device={result_fl.device}")
         dice_index = self.dice(logit, target)
         print(f"dc score is {dice_index}, device={dice_index.device}")
-        difficulty = 1 - dice_index
-        spl = SymmetricSelfPacedLearning(current_epoch)
-        weighted_loss = spl(dice_index, difficulty)
         if do_backprop and current_epoch > self.epoch_for_weighting:
+            spl = SymmetricSelfPacedLearning(current_epoch, gradients_map)
+            weighted_loss = spl(result_fl, keys)
             print(f"dynamically weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
-            return weighted_loss
+            return weighted_loss.mean()
         else:
             print(f"equally weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
             return result_fl.mean()
@@ -220,8 +221,8 @@ if __name__ == "__main__":
     pre = torch.softmax(torch.rand(size), dim=1)
     label = torch.randint(0, 2, size_label)
 
-    epoch = 500
+    epoch = 900
     dice_loss_spl = SoftDiceLoss_SPL({'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
-    focal_loss_spl = FocalLossNonBatch_SPL({}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
-    tmp = focal_loss_spl(pre, label, epoch)
+    # focal_loss_spl = FocalLossNonBatch_SPL({}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
+    tmp = dice_loss_spl(pre, label, epoch, True, ['123', '789'], {'123':2, '345':100, '789':39})
     print(tmp)

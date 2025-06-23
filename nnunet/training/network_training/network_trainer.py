@@ -491,7 +491,7 @@ class NetworkTrainer(object):
                 break
             gradients_str = "\n".join(f"[{filepath}: {gradient}]"
                                       for filepath, gradient in self.gradients_map.items())
-            self.print_to_log_file(f"After this epoch, gradients are: {gradients_str}")
+            self.print_to_log_file(f"After this epoch, gradients are: \n{gradients_str}")
             self.epoch += 1
             self.print_to_log_file("This epoch took %f s\n" % (epoch_end_time - epoch_start_time))
 

@@ -248,7 +248,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
                 data.requires_grad_()
                 output = self.network(data)
                 # del data
-                l = self.loss(output, target, current_epoch, do_backprop)
+                l = self.loss(output, target, current_epoch, do_backprop, keys, self.gradients_map)
 
             if do_backprop:
                 self.amp_grad_scaler.scale(l).backward()
@@ -262,14 +262,11 @@ class nnUNetTrainerV2(nnUNetTrainer):
                 for i in range(data_grad.shape[0]):  # Iterate over each batch
                     norm = np.linalg.norm(data_grad[i])  # Calculate L2 norm
                     self.gradients_map[keys[i]] = norm
-
-                # Print the L2 norm for each batch
-                # print(f"Gradient of input data:{self.gradients_map}")
                 del data
         else:
             output = self.network(data)
             del data
-            l = self.loss(output, target, current_epoch, do_backprop)
+            l = self.loss(output, target, current_epoch, do_backprop, keys, self.gradients_map)
 
             if do_backprop:
                 l.backward()
