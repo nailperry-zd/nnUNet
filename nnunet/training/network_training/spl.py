@@ -25,7 +25,6 @@ class SymmetricSelfPacedLearning(nn.Module):
         weight_matrix = torch.ones(len(keys))
         for i, key in enumerate(keys):
             weight_matrix[i] = self.weight_map.get(key, 1)
-            print(f"key={key} is not found")
         print(f"weight_matrix={weight_matrix}, device={weight_matrix.device}")
         weight_matrix = weight_matrix.to(loss.device).detach()
         loss = loss * weight_matrix
