@@ -337,7 +337,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
                         norm_channels.append(norm_per_channel)
                     self.gradients_map[keys[i]] = norm
                     self.gradients_map_channels[keys[i]] = norm_channels
-                    self.dicescore_map[keys[i]] = dice_index[i]
+                    self.dicescore_map[keys[i]] = dice_index[i].item()
                     # self.focalloss_map[keys[i]] = result_fl[i]
                 del data
         else:
