@@ -327,7 +327,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
                 #         sitk.WriteImage(sitk_image, filename)
                 #
                 # print("Groundtruth saving completed!")
-                result_fl = self.fl(output[0], target[0])
+                # result_fl = self.fl(output[0], target[0])
                 dice_index = self.dice(output[0], target[0])
                 for i in range(data_grad.shape[0]):  # Iterate over each batch
                     norm = np.linalg.norm(data_grad[i])  # Calculate L2 norm
@@ -338,7 +338,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
                     self.gradients_map[keys[i]] = norm
                     self.gradients_map_channels[keys[i]] = norm_channels
                     self.dicescore_map[keys[i]] = dice_index[i]
-                    self.focalloss_map[keys[i]] = result_fl[i]
+                    # self.focalloss_map[keys[i]] = result_fl[i]
                 del data
         else:
             output = self.network(data)
