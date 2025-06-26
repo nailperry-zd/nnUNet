@@ -34,7 +34,8 @@ from nnunet.utilities.to_torch import maybe_to_torch, to_cuda
 from sklearn.model_selection import KFold
 from torch import nn
 from torch.cuda.amp import autocast
-
+from nnunet.training.loss_functions.dice_loss import SoftDice
+from nnunet.training.loss_functions.focal_loss import FocalLossNonBatch
 
 class nnUNetTrainerV2(nnUNetTrainer):
     """
@@ -51,6 +52,8 @@ class nnUNetTrainerV2(nnUNetTrainer):
         self.ds_loss_weights = None
 
         self.pin_memory = True
+        self.fl = FocalLossNonBatch(apply_nonlin=softmax_helper, **{})
+        self.dice = SoftDice(apply_nonlin=softmax_helper, **{'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
 
     def initialize(self, training=True, force_load_plans=False):
         """
@@ -259,9 +262,83 @@ class nnUNetTrainerV2(nnUNetTrainer):
 
                 # Calculate the L2 norm for each batch
                 data_grad = data.grad.cpu().numpy()
+                # ------Visualisation-------
+                # import SimpleITK as sitk
+                # import numpy as np
+                # data_grad = np.abs(data_grad)
+                # filedir = rf"Y:\picai\workdir\nnUNet_results\nnUNet\3d_fullres\Task822_PICAI_Expert\epoch{current_epoch}"
+                # # Check if the directory exists, and create it if it does not
+                # if not os.path.exists(filedir):
+                #     os.makedirs(filedir)
+                #     print(f"Directory '{filedir}' created!")
+                # # Get the dimensions of the data
+                # batch_size, num_sequences, depth, height, width = data_grad.shape
+                # # Iterate over each batch and each sequence
+                # for b in range(batch_size):
+                #     for seq in range(num_sequences):
+                #         # Get the current volume data
+                #         volume = data_grad[b, seq, :, :, :]
+                #         # Convert to SimpleITK image
+                #         sitk_image = sitk.GetImageFromArray(volume)
+                #         # Set image metadata (optional)
+                #         sitk_image.SetSpacing((1.0, 1.0, 1.0))  # Set voxel spacing as needed
+                #         sitk_image.SetOrigin((0.0, 0.0, 0.0))  # Set the origin as needed
+                #
+                #         # Save as nii.gz file
+                #         filename = rf"{filedir}\{keys[b]}_sequence_{seq + 1}.nii.gz"
+                #         sitk.WriteImage(sitk_image, filename)
+                #
+                # print("Gradients saving completed!")
+                #
+                # # Get the dimensions of the data
+                # batch_size, num_sequences, depth, height, width = output[0].shape
+                # # Iterate over each batch and each sequence
+                # for b in range(batch_size):
+                #     for seq in range(num_sequences):
+                #         # Get the current volume data
+                #         pred = softmax_helper(output[0])
+                #         volume = pred[b, seq, :, :, :].cpu().detach().numpy().astype(np.float32)
+                #         # Convert to SimpleITK image
+                #         sitk_image = sitk.GetImageFromArray(volume)
+                #         # Set image metadata (optional)
+                #         sitk_image.SetSpacing((1.0, 1.0, 1.0))  # Set voxel spacing as needed
+                #         sitk_image.SetOrigin((0.0, 0.0, 0.0))  # Set the origin as needed
+                #
+                #         # Save as nii.gz file
+                #         filename = rf"{filedir}\{keys[b]}_prediction_{seq + 1}.nii.gz"
+                #         sitk.WriteImage(sitk_image, filename)
+                #
+                # print("Prediction saving completed!")
+                # # Get the dimensions of the data
+                # batch_size, num_sequences, depth, height, width = target[0].shape
+                # # Iterate over each batch and each sequence
+                # for b in range(batch_size):
+                #     for seq in range(num_sequences):
+                #         # Get the current volume data
+                #         volume = target[0][b, seq, :, :, :].cpu().detach().numpy().astype(np.float32)
+                #         # Convert to SimpleITK image
+                #         sitk_image = sitk.GetImageFromArray(volume)
+                #         # Set image metadata (optional)
+                #         sitk_image.SetSpacing((1.0, 1.0, 1.0))  # Set voxel spacing as needed
+                #         sitk_image.SetOrigin((0.0, 0.0, 0.0))  # Set the origin as needed
+                #
+                #         # Save as nii.gz file
+                #         filename = rf"{filedir}\{keys[b]}_groundtruth_{seq + 1}.nii.gz"
+                #         sitk.WriteImage(sitk_image, filename)
+                #
+                # print("Groundtruth saving completed!")
+                result_fl = self.fl(output[0], target[0])
+                dice_index = self.dice(output[0], target[0])
                 for i in range(data_grad.shape[0]):  # Iterate over each batch
                     norm = np.linalg.norm(data_grad[i])  # Calculate L2 norm
+                    norm_channels = []
+                    for j in range(data_grad.shape[1]):
+                        norm_per_channel = np.linalg.norm(data_grad[i][j])  # Calculate L2 norm for each channel
+                        norm_channels.append(norm_per_channel)
                     self.gradients_map[keys[i]] = norm
+                    self.gradients_map_channels[keys[i]] = norm_channels
+                    self.dicescore_map[keys[i]] = dice_index[i]
+                    self.focalloss_map[keys[i]] = result_fl[i]
                 del data
         else:
             output = self.network(data)

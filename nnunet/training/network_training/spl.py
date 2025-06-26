@@ -132,6 +132,15 @@ class nnUNetTrainerV2_SoftDiceLoss_SPL_100(nnUNetTrainerV2):
         self.loss = SoftDiceLoss_SPL({'batch_dice': False, 'smooth': 1e-5, 'do_bg': False}, epoch_for_weighting=100)
         self.save_latest_only = False
 
+class nnUNetTrainerV2_SoftDiceLoss_SPL_Test(nnUNetTrainerV2):
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
+                                              unpack_data, deterministic, fp16)
+        print("Setting up self.loss = SoftDiceLoss_SPL")
+        self.loss = SoftDiceLoss_SPL({'batch_dice': False, 'smooth': 1e-5, 'do_bg': False}, epoch_for_weighting=0)
+        self.save_latest_only = False
+
 class nnUNetTrainerV2_SoftDiceLoss_SPL_50(nnUNetTrainerV2):
     def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
                  unpack_data=True, deterministic=True, fp16=False):

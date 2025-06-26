@@ -16,7 +16,6 @@ import numpy as np
 import torch
 from torch import nn
 from nnunet.utilities.nd_softmax import softmax_helper
-from nnunet.training.network_training.nnUNetTrainerV2 import nnUNetTrainerV2
 
 class FocalLossNonBatch(nn.Module):
     """
