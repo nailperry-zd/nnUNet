@@ -251,7 +251,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
                 data.requires_grad_()
                 output = self.network(data)
                 #
-                l = self.loss(output, target, current_epoch, do_backprop, keys, self.dicescore_map)
+                l = self.loss(output, target, current_epoch, do_backprop, keys, self.gradients_map)
 
             if do_backprop:
                 self.amp_grad_scaler.scale(l).backward()
