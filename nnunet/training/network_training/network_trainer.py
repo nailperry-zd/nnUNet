@@ -588,7 +588,7 @@ class NetworkTrainer(object):
 
             if self.val_eval_criterion_MA > self.best_val_eval_criterion_MA:
                 self.best_val_eval_criterion_MA = self.val_eval_criterion_MA
-                #self.print_to_log_file("saving best epoch checkpoint...")
+                self.print_to_log_file(f"saving best epoch checkpoint..., epoch = {self.epoch}, best_val_criterion = {self.best_val_eval_criterion_MA}")
                 if self.save_best_checkpoint: self.save_checkpoint(join(self.output_folder, "model_best.model"))
 
             # Now see if the moving average of the train loss has improved. If yes then reset patience, else
@@ -596,7 +596,7 @@ class NetworkTrainer(object):
             if self.train_loss_MA + self.train_loss_MA_eps < self.best_MA_tr_loss_for_patience:
                 self.best_MA_tr_loss_for_patience = self.train_loss_MA
                 self.best_epoch_based_on_MA_tr_loss = self.epoch
-                #self.print_to_log_file("New best epoch (train loss MA): %03.4f" % self.best_MA_tr_loss_for_patience)
+                self.print_to_log_file("New best epoch (train loss MA): %03.4f" % self.best_MA_tr_loss_for_patience)
             else:
                 pass
                 #self.print_to_log_file("No improvement: current train MA %03.4f, best: %03.4f, eps is %03.4f" %
