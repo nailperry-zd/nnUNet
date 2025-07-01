@@ -15,7 +15,107 @@
 import numpy as np
 import torch
 from torch import nn
-from nnunet.utilities.nd_softmax import softmax_helper
+
+class AdaptiveFocalLossNonBatch(nn.Module):
+    """
+    copy from: https://github.com/Hsuxu/Loss_ToolBox-PyTorch/blob/master/FocalLoss/FocalLoss.py
+    This is a implementation of Focal Loss with smooth label cross entropy supported which is proposed in
+    'Focal Loss for Dense Object Detection. (https://arxiv.org/abs/1708.02002)'
+        Focal_Loss= -1*alpha*(1-pt)*log(pt)
+    :param num_class:
+    :param a: steepness of sigmoid, used to control gamma(p_t)
+    :param b: midpoint of transition, used to control gamma(p_t)
+    :param alpha: (tensor) 3D or 4D the scalar factor for this criterion
+    :param gamma: (float,double) gamma > 0 reduces the relative loss for well-classified examples (p>0.5) putting more
+                    focus on hard misclassified example
+    :param smooth: (float,double) smooth value when cross entropy
+    :param balance_index: (int) balance class index, should be specific when alpha is float
+    :param size_average: (bool, optional) By default, the losses are averaged over each loss element in the batch.
+    """
+
+    def __init__(self, apply_nonlin=None, alpha=None, a=10, b=0.5, gamma_min=0, gamma_max=2, balance_index=0, smooth=1e-5, size_average=True):
+        super().__init__()
+        self.apply_nonlin = apply_nonlin
+        self.alpha = alpha
+        self.gamma_min = gamma_min
+        self.gamma_max = gamma_max
+        self.a = a
+        self.b = b
+        self.balance_index = balance_index
+        self.smooth = smooth
+        self.size_average = size_average
+
+        if self.smooth is not None:
+            if self.smooth < 0 or self.smooth > 1.0:
+                raise ValueError('smooth value should be in [0,1]')
+
+    def forward(self, logit, target):
+        if self.apply_nonlin is not None:
+            logit = self.apply_nonlin(logit)
+        num_class = logit.shape[1]
+        batch_size = logit.shape[0]
+        results = torch.zeros(batch_size)
+
+        for b in range(batch_size):
+            logit_slice = logit[b:b + 1]
+            target_slice = target[b:b + 1]
+            if logit_slice.dim() > 2:
+                # flatten spatial dimensions N,C,d1,d2 -> N,C,m (m=d1*d2*...)
+                logit_slice = logit_slice.view(logit_slice.size(0), logit_slice.size(1), -1)
+                logit_slice = logit_slice.permute(0, 2, 1).contiguous()
+                logit_slice = logit_slice.view(-1, logit_slice.size(-1))
+            target_slice = torch.squeeze(target_slice, 1)
+            target_slice = target_slice.view(-1, 1)
+            # print(logit.shape, target.shape)
+
+            alpha = self.alpha
+
+            if alpha is None:
+                alpha = torch.ones(num_class, 1)
+            elif isinstance(alpha, (list, np.ndarray)):
+                assert len(alpha) == num_class
+                alpha = torch.FloatTensor(alpha).view(num_class, 1)
+                alpha = alpha / alpha.sum()
+            elif isinstance(alpha, float):
+                alpha = torch.ones(num_class, 1)
+                alpha = alpha * (1 - self.alpha)
+                alpha[self.balance_index] = self.alpha
+            else:
+                raise TypeError(f'Unsupported alpha type: {type(alpha)}')
+
+            if alpha.device != logit_slice.device:
+                alpha = alpha.to(logit_slice.device)
+
+            idx = target_slice.cpu().long()
+
+            one_hot_key = torch.FloatTensor(target_slice.size(0), num_class).zero_()
+            one_hot_key = one_hot_key.scatter_(1, idx, 1)
+            if one_hot_key.device != logit_slice.device:
+                one_hot_key = one_hot_key.to(logit_slice.device)
+
+            if self.smooth:
+                one_hot_key = torch.clamp(
+                    one_hot_key, self.smooth / (num_class - 1), 1.0 - self.smooth)
+            pt = (one_hot_key * logit_slice).sum(1) + self.smooth
+            logpt = pt.log()
+
+            alpha = alpha[idx]
+            alpha = torch.squeeze(alpha)
+
+            # Compute difficulty
+            difficulty = 1 - pt
+            # Compute adaptive gamma(p_t)
+            gamma_pt = self.gamma_min + (self.gamma_max - self.gamma_min) / (1 + np.exp(-self.a * (difficulty - self.b)))
+
+            loss = -1 * alpha * torch.pow((1 - pt), gamma_pt) * logpt
+
+            if self.size_average:
+                loss = loss.mean()
+            else:
+                loss = loss.sum()
+
+            results[b] = loss
+        return results.cuda()
 
 class FocalLossNonBatch(nn.Module):
     """
