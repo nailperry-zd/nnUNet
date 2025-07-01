@@ -98,7 +98,7 @@ class AdaptiveFocalLoss(nn.Module):
         # Compute difficulty
         difficulty = 1 - pt
         # Compute adaptive gamma(p_t)
-        gamma_pt = self.gamma_min + (self.gamma_max - self.gamma_min) / (1 + np.exp(-self.a * (difficulty - self.b)))
+        gamma_pt = self.gamma_min + (self.gamma_max - self.gamma_min) / (1 + torch.exp(-self.a * (difficulty - self.b)))
 
         alpha = alpha[idx]
         alpha = torch.squeeze(alpha)
@@ -199,7 +199,7 @@ class AdaptiveFocalLossNonBatch(nn.Module):
             # Compute difficulty
             difficulty = 1 - pt
             # Compute adaptive gamma(p_t)
-            gamma_pt = self.gamma_min + (self.gamma_max - self.gamma_min) / (1 + np.exp(-self.a * (difficulty - self.b)))
+            gamma_pt = self.gamma_min + (self.gamma_max - self.gamma_min) / (1 + torch.exp(-self.a * (difficulty - self.b)))
 
             loss = -1 * alpha * torch.pow((1 - pt), gamma_pt) * logpt
 
