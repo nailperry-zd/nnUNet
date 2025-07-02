@@ -13,9 +13,10 @@
 #    limitations under the License.
 
 from nnunet.training.loss_functions.crossentropy import RobustCrossEntropyLoss
-from nnunet.training.network_training.nnUNetTrainerV2_focalLoss import FocalLoss
+from nnunet.training.loss_functions.focal_loss import FocalLoss, AdaptiveFocalLoss
 from nnunet.training.network_training.nnUNetTrainerV2 import nnUNetTrainerV2
 from torch import nn
+from nnunet.utilities.nd_softmax import softmax_helper
 
 # TODO: replace FocalLoss by fixed implemetation (and set smooth=0 in that one?)
 
@@ -29,7 +30,7 @@ class FL_and_CE_loss(nn.Module):
             ce_kwargs = {}
 
         self.aggregate = aggregate
-        self.fl = FocalLoss(apply_nonlin=nn.Softmax(), **fl_kwargs)
+        self.fl = FocalLoss(apply_nonlin=softmax_helper, **fl_kwargs)
         self.ce = RobustCrossEntropyLoss(**ce_kwargs)
         self.alpha = alpha
 
@@ -42,6 +43,39 @@ class FL_and_CE_loss(nn.Module):
             raise NotImplementedError("nah son")
         return result
 
+class AFL_and_CE_loss(nn.Module):
+    def __init__(self, fl_kwargs=None, ce_kwargs=None, alpha=0.5, aggregate="sum"):
+        super().__init__()
+        if fl_kwargs is None:
+            fl_kwargs = {}
+        if ce_kwargs is None:
+            ce_kwargs = {}
+
+        self.aggregate = aggregate
+        self.fl = AdaptiveFocalLoss(apply_nonlin=softmax_helper, **fl_kwargs)
+        self.ce = RobustCrossEntropyLoss(**ce_kwargs)
+        self.alpha = alpha
+
+    def forward(self, net_output, target):
+        fl_loss = self.fl(net_output, target)
+        ce_loss = self.ce(net_output, target)
+        if self.aggregate == "sum":
+            result = self.alpha*fl_loss + (1-self.alpha)*ce_loss
+        else:
+            raise NotImplementedError("nah son")
+        return result
+
+class nnUNetTrainerV2_Loss_AFL_Gamma2(nnUNetTrainerV2):
+    """
+    Set loss to FL only
+    """
+
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage, unpack_data,
+                         deterministic, fp16)
+        self.loss = AFL_and_CE_loss(fl_kwargs={}, alpha=1.0)
+        self.save_latest_only = False
 
 class nnUNetTrainerV2_Loss_FL_and_CE_checkpoints(nnUNetTrainerV2):
     """
