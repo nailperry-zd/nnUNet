@@ -32,7 +32,7 @@ class SymmetricSelfPacedLearning(nn.Module):
 
     def compute_weight_map(self, difficulty_map):
         # Sort example_difficulty based on values
-        sorted_items = sorted(difficulty_map.items(), key=lambda item: item[1])
+        sorted_items = sorted(difficulty_map.items(), key=lambda item: item[1], reverse=True)
         sorted_indices = [item[0] for item in sorted_items]  # Get indices based on sorted keys
 
         # Calculate the batch step size
@@ -187,7 +187,7 @@ class nnUNetTrainerV2_CELossNonBatch_SPL_Baseline(nnUNetTrainerV2):
         self.loss = FocalLossNonBatch_SPL({'gamma':0}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False}, epoch_for_weighting=1000)
         self.save_latest_only = False
 
-class nnUNetTrainerV2_CELossNonBatch_SPL(nnUNetTrainerV2):
+class nnUNetTrainerV2_CELossNonBatch_SPL_HardFirst(nnUNetTrainerV2):
     def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
                  unpack_data=True, deterministic=True, fp16=False):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
