@@ -122,23 +122,16 @@ class nnUNetTrainerV2_FocalTverskyDiceLoss_FN9_FP1(nnUNetTrainerV2):
                                               unpack_data, deterministic, fp16)
         print("Setting up self.loss = FocalTverskyDiceLoss_FN9_FP1")
         self.loss = FocalTversky_DC_and_CE_loss({"alpha": 0.9, "beta": 0.1, "gamma": 1, 'batch_dice': self.batch_dice, 'smooth': 1e-5, 'do_bg': False}, {})
-
-class nnUNetTrainerV2_FocalTverskyDiceLoss_FN1_FP9(nnUNetTrainerV2):
-    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
-                 unpack_data=True, deterministic=True, fp16=False):
-        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
-                                              unpack_data, deterministic, fp16)
-        print("Setting up self.loss = FocalTverskyDiceLoss_FN9_FP1")
-        self.loss = FocalTversky_DC_and_CE_loss({"alpha": 0.1, "beta": 0.9, "gamma": 1, 'batch_dice': self.batch_dice, 'smooth': 1e-5, 'do_bg': False}, {})
+        self.save_latest_only = False
 
 class nnUNetTrainerV2_FocalTverskyDiceLoss_FN5_FP5(nnUNetTrainerV2):
     def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
                  unpack_data=True, deterministic=True, fp16=False):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
                                               unpack_data, deterministic, fp16)
-        print("Setting up self.loss = FocalTverskyDiceLoss_FN9_FP1")
+        print("Setting up self.loss = FocalTverskyDiceLoss_FN5_FP5")
         self.loss = FocalTversky_DC_and_CE_loss({"alpha": 0.5, "beta": 0.5, "gamma": 1, 'batch_dice': self.batch_dice, 'smooth': 1e-5, 'do_bg': False}, {})
-
+        self.save_latest_only = False
 
 class nnUNetTrainerV2_FocalTverskyDiceLoss_FN1_FP9(nnUNetTrainerV2):
     def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
@@ -147,4 +140,4 @@ class nnUNetTrainerV2_FocalTverskyDiceLoss_FN1_FP9(nnUNetTrainerV2):
                                               unpack_data, deterministic, fp16)
         print("Setting up self.loss = FocalTverskyDiceLoss_FN1_FP9")
         self.loss = FocalTversky_DC_and_CE_loss({"alpha": 0.1, "beta": 0.9, "gamma": 1, 'batch_dice': self.batch_dice, 'smooth': 1e-5, 'do_bg': False}, {})
-
+        self.save_latest_only = False
