@@ -96,7 +96,7 @@ class FocalLossNonBatch_SPL(nn.Module):
         dice_index = self.dice(logit, target)
         print(f"dc score is {dice_index}, device={dice_index.device}")
         if do_backprop and current_epoch > self.epoch_for_weighting:
-            spl = SymmetricSelfPacedLearning(current_epoch, gradients_map)
+            spl = SymmetricSelfPacedLearning(current_epoch - self.epoch_for_weighting, gradients_map)
             weighted_loss = spl(result_fl, keys)
             print(f"dynamically weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
             return weighted_loss.mean()
