@@ -60,7 +60,7 @@ class SoftDiceLoss_SPL(nn.Module):
         print(f"dc score is {dice_index}, device={dice_index.device}")
         dice_loss = 1 - dice_index
         if do_backprop and current_epoch > self.epoch_for_weighting:
-            spl = SymmetricSelfPacedLearning(current_epoch, gradients_map)
+            spl = SymmetricSelfPacedLearning(current_epoch - self.epoch_for_weighting, gradients_map)
             weighted_loss = spl(dice_loss, keys)
             print(f"dynamically weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
             return weighted_loss.mean()
@@ -169,6 +169,14 @@ class nnUNetTrainerV2_CELossNonBatch_SPL_HardFirst(nnUNetTrainerV2):
         self.loss = FocalLossNonBatch_SPL({'gamma':0}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
         self.save_latest_only = False
 
+class nnUNetTrainerV2_CELossNonBatch_SPL_HardFirst500(nnUNetTrainerV2):
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
+                                              unpack_data, deterministic, fp16)
+        print("Setting up self.loss = CELossNonBatch_SPL")
+        self.loss = FocalLossNonBatch_SPL({'gamma':0}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False}, epoch_for_weighting=499)
+        self.save_latest_only = False
 
 if __name__ == "__main__":
     # loss = torch.tensor([0, 0.8, 0.9, 0.1, 0.5, 1])  # loss = 1 - Dice
