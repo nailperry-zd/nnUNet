@@ -3,7 +3,7 @@ import torch.nn as nn
 
 import torch.nn.functional as F
 from nnunet.training.loss_functions.dice_loss import SoftDice
-from nnunet.training.loss_functions.focal_loss import FocalLossNonBatch
+from nnunet.training.loss_functions.focal_loss import FocalLossNonBatch, FocalLoss
 from nnunet.training.network_training.nnUNetTrainerV2 import nnUNetTrainerV2
 
 softmax_helper = lambda x: F.softmax(x, 1)
@@ -223,6 +223,23 @@ class nnUNetTrainerV2_FocalLossNonBatch_SPL_10(nnUNetTrainerV2):
         self.loss = FocalLossNonBatch_SPL({}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False}, epoch_for_weighting=10)
         self.save_latest_only = False
 
+class nnUNetTrainerV2_FocalLossPerSample(nnUNetTrainerV2):
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
+                                              unpack_data, deterministic, fp16)
+        print("Setting up self.loss = FocalLossPerSample")
+        self.loss = FocalLossNonBatch(apply_nonlin=softmax_helper, **{})
+        self.save_latest_only = False
+
+class nnUNetTrainerV2_FocalLoss(nnUNetTrainerV2):
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
+                                              unpack_data, deterministic, fp16)
+        print("Setting up self.loss = FocalLoss")
+        self.loss = FocalLoss(apply_nonlin=softmax_helper, **{})
+        self.save_latest_only = False
 
 if __name__ == "__main__":
     # loss = torch.tensor([0, 0.8, 0.9, 0.1, 0.5, 1])  # loss = 1 - Dice
