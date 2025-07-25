@@ -13,7 +13,7 @@
 #    limitations under the License.
 
 from nnunet.training.loss_functions.crossentropy import RobustCrossEntropyLoss
-from nnunet.training.loss_functions.focal_loss import FocalLoss, AdaptiveFocalLoss
+from nnunet.training.loss_functions.focal_loss import FocalLoss, AdaptiveFocalLoss, FocalLossPerSample
 from nnunet.training.network_training.nnUNetTrainerV2 import nnUNetTrainerV2
 from torch import nn
 from nnunet.utilities.nd_softmax import softmax_helper
@@ -111,6 +111,30 @@ class nnUNetTrainerV2_Loss_FL_and_CE_checkpoints_FL10(nnUNetTrainerV2):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage, unpack_data,
                          deterministic, fp16)
         self.loss = FL_and_CE_loss(alpha=1.0)
+        self.save_latest_only = False
+
+class nnUNetTrainerV2_FocalLossPerSample(nnUNetTrainerV2):
+    """
+    Set loss to FL + CE and set checkpoints
+    """
+
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage, unpack_data,
+                         deterministic, fp16)
+        self.loss = FocalLossPerSample(apply_nonlin=softmax_helper, **{})
+        self.save_latest_only = False
+
+class nnUNetTrainerV2_FocalLossBatch(nnUNetTrainerV2):
+    """
+    Set loss to FL + CE and set checkpoints
+    """
+
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage, unpack_data,
+                         deterministic, fp16)
+        self.loss = FocalLoss(apply_nonlin=softmax_helper, **{})
         self.save_latest_only = False
 
 class nnUNetTrainerV2_Loss_FL_Gamma5(nnUNetTrainerV2):
