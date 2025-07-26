@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 
 import torch.nn.functional as F
-from nnunet.training.loss_functions.dice_loss import SoftDice
 from nnunet.training.loss_functions.focal_loss import FocalLossNonBatch
 from nnunet.training.network_training.nnUNetTrainerV2 import nnUNetTrainerV2
 
