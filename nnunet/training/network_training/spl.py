@@ -49,26 +49,6 @@ class SymmetricSelfPacedLearning(nn.Module):
         return weight_map
 
 
-class SoftDiceLoss_SPL(nn.Module):
-    def __init__(self, soft_dice_kwargs, epoch_for_weighting=0):
-        super().__init__()
-        self.dice = SoftDice(apply_nonlin=softmax_helper, **soft_dice_kwargs)
-        self.epoch_for_weighting = epoch_for_weighting
-
-    def forward(self, x, y, current_epoch, do_backprop, keys, gradients_map):
-        dice_index = self.dice(x, y)
-        print(f"dc score is {dice_index}, device={dice_index.device}")
-        dice_loss = 1 - dice_index
-        if do_backprop and current_epoch > self.epoch_for_weighting:
-            spl = SymmetricSelfPacedLearning(current_epoch, gradients_map)
-            weighted_loss = spl(dice_loss, keys)
-            print(f"dynamically weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
-            return weighted_loss.mean()
-        else:
-            print(f"equally weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
-            return dice_loss.mean()
-
-
 class FocalLossNonBatch_SPL(nn.Module):
     """
     copy from: https://github.com/Hsuxu/Loss_ToolBox-PyTorch/blob/master/FocalLoss/FocalLoss.py
@@ -87,14 +67,11 @@ class FocalLossNonBatch_SPL(nn.Module):
     def __init__(self, fl_kwargs, soft_dice_kwargs, epoch_for_weighting=0):
         super().__init__()
         self.fl = FocalLossNonBatch(apply_nonlin=softmax_helper, **fl_kwargs)
-        self.dice = SoftDice(apply_nonlin=softmax_helper, **soft_dice_kwargs)
         self.epoch_for_weighting = epoch_for_weighting
 
     def forward(self, logit, target, current_epoch, do_backprop, keys, gradients_map):
         result_fl = self.fl(logit, target)
         print(f"FocalLoss is {result_fl}, device={result_fl.device}")
-        dice_index = self.dice(logit, target)
-        print(f"dc score is {dice_index}, device={dice_index.device}")
         if do_backprop and current_epoch > self.epoch_for_weighting:
             spl = SymmetricSelfPacedLearning(current_epoch, gradients_map)
             weighted_loss = spl(result_fl, keys)
@@ -103,34 +80,6 @@ class FocalLossNonBatch_SPL(nn.Module):
         else:
             print(f"equally weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
             return result_fl.mean()
-
-
-class nnUNetTrainerV2_SoftDiceLoss_SPL_HardFirst(nnUNetTrainerV2):
-    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
-                 unpack_data=True, deterministic=True, fp16=False):
-        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
-                                              unpack_data, deterministic, fp16)
-        print("Setting up self.loss = SoftDiceLoss_SPL_HardFirst")
-        self.loss = SoftDiceLoss_SPL({'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
-        self.save_latest_only = False
-
-class nnUNetTrainerV2_SoftDiceLoss_SPL_Baseline(nnUNetTrainerV2):
-    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
-                 unpack_data=True, deterministic=True, fp16=False):
-        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
-                                              unpack_data, deterministic, fp16)
-        print("Setting up self.loss = SoftDiceLoss_SPL_Baseline")
-        self.loss = SoftDiceLoss_SPL({'batch_dice': False, 'smooth': 1e-5, 'do_bg': False}, epoch_for_weighting=1000)
-        self.save_latest_only = False
-
-class nnUNetTrainerV2_SoftDiceLoss_SPL_Test(nnUNetTrainerV2):
-    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
-                 unpack_data=True, deterministic=True, fp16=False):
-        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
-                                              unpack_data, deterministic, fp16)
-        print("Setting up self.loss = SoftDiceLoss_SPL_Test")
-        self.loss = SoftDiceLoss_SPL({'batch_dice': False, 'smooth': 1e-5, 'do_bg': False}, epoch_for_weighting=0)
-        self.save_latest_only = False
 
 
 class nnUNetTrainerV2_FocalLossNonBatch_SPL_HardFirst(nnUNetTrainerV2):
