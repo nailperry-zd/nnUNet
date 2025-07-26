@@ -220,7 +220,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
         self.network.do_ds = ds
         return ret
 
-    def run_iteration(self, data_generator, do_backprop=True, run_online_evaluation=False):
+    def run_iteration(self, data_generator, current_epoch, do_backprop=True, run_online_evaluation=False):
         """
         gradient clipping improves training stability
 
@@ -232,6 +232,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
         data_dict = next(data_generator)
         data = data_dict['data']
         target = data_dict['target']
+        keys = data_dict['keys']
 
         data = maybe_to_torch(data)
         target = maybe_to_torch(target)
@@ -244,9 +245,10 @@ class nnUNetTrainerV2(nnUNetTrainer):
 
         if self.fp16:
             with autocast():
+                data.requires_grad_()
                 output = self.network(data)
-                del data
-                l = self.loss(output, target)
+                #
+                l = self.loss(output, target, current_epoch, do_backprop, keys, self.gradients_map)
 
             if do_backprop:
                 self.amp_grad_scaler.scale(l).backward()
@@ -254,10 +256,22 @@ class nnUNetTrainerV2(nnUNetTrainer):
                 torch.nn.utils.clip_grad_norm_(self.network.parameters(), 12)
                 self.amp_grad_scaler.step(self.optimizer)
                 self.amp_grad_scaler.update()
+
+                # Calculate the L2 norm for each batch
+                data_grad = data.grad.cpu().numpy()
+                for i in range(data_grad.shape[0]):  # Iterate over each batch
+                    norm = np.linalg.norm(data_grad[i])  # Calculate L2 norm
+                    norm_channels = []
+                    for j in range(data_grad.shape[1]):
+                        norm_per_channel = np.linalg.norm(data_grad[i][j])  # Calculate L2 norm for each channel
+                        norm_channels.append(norm_per_channel)
+                    self.gradients_map[keys[i]] = norm
+                    self.gradients_map_channels[keys[i]] = norm_channels
+                del data
         else:
             output = self.network(data)
             del data
-            l = self.loss(output, target)
+            l = self.loss(output, target, current_epoch, do_backprop, keys, self.gradients_map)
 
             if do_backprop:
                 l.backward()

@@ -533,3 +533,19 @@ class myTrainer_zonal_FL_1000(myTrainer_zonal_FL):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage, unpack_data,
                          deterministic, fp16)
         self.max_num_epochs = 1000
+
+
+from nnunet.training.network_training.spl import FocalLossNonBatch_SPL
+class ZSSMNet_CELossNonBatch_SPL_HardFirst(myTrainer_zonal):
+    """
+    Info for Fabian: same as internal nnUNetTrainerV2_2
+    """
+
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage, unpack_data,
+                         deterministic, fp16)
+        self.max_num_epochs = 1000
+        print("Setting up self.loss = CELossNonBatch_SPL")
+        self.loss = FocalLossNonBatch_SPL({'gamma': 0}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
+        self.save_latest_only = False
