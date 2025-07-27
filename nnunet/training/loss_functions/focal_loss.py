@@ -15,24 +15,8 @@
 import numpy as np
 import torch
 from torch import nn
-from nnunet.utilities.nd_softmax import softmax_helper
-from nnunet.training.network_training.nnUNetTrainerV2 import nnUNetTrainerV2
 
-class FocalLossPerSample(nn.Module):
-    """
-    copy from: https://github.com/Hsuxu/Loss_ToolBox-PyTorch/blob/master/FocalLoss/FocalLoss.py
-    This is a implementation of Focal Loss with smooth label cross entropy supported which is proposed in
-    'Focal Loss for Dense Object Detection. (https://arxiv.org/abs/1708.02002)'
-        Focal_Loss= -1*alpha*(1-pt)*log(pt)
-    :param num_class:
-    :param alpha: (tensor) 3D or 4D the scalar factor for this criterion
-    :param gamma: (float,double) gamma > 0 reduces the relative loss for well-classified examples (p>0.5) putting more
-                    focus on hard misclassified example
-    :param smooth: (float,double) smooth value when cross entropy
-    :param balance_index: (int) balance class index, should be specific when alpha is float
-    :param size_average: (bool, optional) By default, the losses are averaged over each loss element in the batch.
-    """
-
+class FocalLossPerSampleRaw(nn.Module):
     def __init__(self, apply_nonlin=None, alpha=None, gamma=2, balance_index=0, smooth=1e-5, size_average=True):
         super().__init__()
         self.apply_nonlin = apply_nonlin
@@ -109,7 +93,16 @@ class FocalLossPerSample(nn.Module):
                 loss = loss.sum()
 
             results[b] = loss
-        return results.cuda().mean()
+        return results.cuda()
+
+class FocalLossPerSample(FocalLossPerSampleRaw):
+
+    def __init__(self, apply_nonlin=None, alpha=None, gamma=2, balance_index=0, smooth=1e-5, size_average=True):
+        super().__init__(apply_nonlin, alpha, gamma, balance_index, smooth, size_average)
+
+    def forward(self, logit, target):
+        results = super().forward(logit, target)
+        return results.mean()
 
 class AdaptiveFocalLoss(nn.Module):
     """

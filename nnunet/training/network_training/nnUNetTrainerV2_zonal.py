@@ -17,6 +17,7 @@ import torch.nn as nn
 from nnunet.training.network_training.nnUNetTrainerV2 import nnUNetTrainerV2
 from nnunet.training.loss_functions.crossentropy import RobustCrossEntropyLoss
 from nnunet.training.loss_functions.focal_loss import FocalLossPerSample, FocalLoss
+from nnunet.training.network_training.spl import FocalLossNonBatch_SPL
 from nnunet.utilities.nd_softmax import softmax_helper
 
 class FL_and_CE_loss(nn.Module):
@@ -80,26 +81,38 @@ class nnUNetTrainerV2_zonal_FL(nnUNetTrainerV2_zonal):
                          deterministic, fp16)
         self.loss = FL_and_CE_loss(alpha=0.5)
 
-class nnUNetTrainerV2_zonal_FocalLossPerSample(nnUNetTrainerV2_zonal):
-    """
-    Info for Fabian: same as internal nnUNetTrainerV2_2
-    """
-
+class nnUNet_Zonal_FocalLossNonBatch_SPL_HardFirst(nnUNetTrainerV2_zonal):
     def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
                  unpack_data=True, deterministic=True, fp16=False):
-        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage, unpack_data,
-                         deterministic, fp16)
-        self.loss = FocalLossPerSample(apply_nonlin=softmax_helper, **{})
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
+                                              unpack_data, deterministic, fp16)
+        print("Setting up self.loss = FocalLossNonBatch_SPL_HardFirst")
+        self.loss = FocalLossNonBatch_SPL({}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
         self.save_latest_only = False
 
-class nnUNetTrainerV2_zonal_FocalLoss(nnUNetTrainerV2_zonal):
-    """
-    Info for Fabian: same as internal nnUNetTrainerV2_2
-    """
-
+class nnUNet_Zonal_FocalLossNonBatch_SPL_Baseline(nnUNetTrainerV2_zonal):
     def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
                  unpack_data=True, deterministic=True, fp16=False):
-        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage, unpack_data,
-                         deterministic, fp16)
-        self.loss = FocalLoss(apply_nonlin=softmax_helper, **{})
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
+                                              unpack_data, deterministic, fp16)
+        print("Setting up self.loss = FocalLossNonBatch_SPL_Baseline")
+        self.loss = FocalLossNonBatch_SPL({}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False}, epoch_for_weighting=1000)
+        self.save_latest_only = False
+
+class nnUNet_Zonal_CELossNonBatch_SPL_Baseline(nnUNetTrainerV2_zonal):
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
+                                              unpack_data, deterministic, fp16)
+        print("Setting up self.loss = CELossNonBatch_SPL_Baseline")
+        self.loss = FocalLossNonBatch_SPL({'gamma':0}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False}, epoch_for_weighting=1000)
+        self.save_latest_only = False
+
+class nnUNet_Zonal_CELossNonBatch_SPL_HardFirst(nnUNetTrainerV2_zonal):
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
+                                              unpack_data, deterministic, fp16)
+        print("Setting up self.loss = CELossNonBatch_SPL")
+        self.loss = FocalLossNonBatch_SPL({'gamma':0}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
         self.save_latest_only = False

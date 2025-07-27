@@ -125,6 +125,8 @@ class NetworkTrainer(object):
         self.save_intermediate_checkpoints = True  # whether or not to save checkpoint_latest
         self.save_best_checkpoint = True  # whether or not to save the best checkpoint according to self.best_val_eval_criterion_MA
         self.save_final_checkpoint = True  # whether or not to save the final checkpoint
+        self.gradients_map = {}
+        self.gradients_map_channels = {}
 
     @abstractmethod
     def initialize(self, training=True):
@@ -447,13 +449,13 @@ class NetworkTrainer(object):
                     for b in tbar:
                         tbar.set_description("Epoch {}/{}".format(self.epoch+1, self.max_num_epochs))
 
-                        l = self.run_iteration(self.tr_gen, True)
+                        l = self.run_iteration(self.tr_gen, self.epoch, True)
 
                         tbar.set_postfix(loss=l)
                         train_losses_epoch.append(l)
             else:
                 for _ in range(self.num_batches_per_epoch):
-                    l = self.run_iteration(self.tr_gen, True)
+                    l = self.run_iteration(self.tr_gen, self.epoch, True)
                     train_losses_epoch.append(l)
 
             self.all_tr_losses.append(np.mean(train_losses_epoch))
@@ -464,7 +466,7 @@ class NetworkTrainer(object):
                 self.network.eval()
                 val_losses = []
                 for b in range(self.num_val_batches_per_epoch):
-                    l = self.run_iteration(self.val_gen, False, True)
+                    l = self.run_iteration(self.val_gen, self.epoch, False, True)
                     val_losses.append(l)
                 self.all_val_losses.append(np.mean(val_losses))
                 self.print_to_log_file("validation loss: %.4f" % self.all_val_losses[-1])
@@ -474,7 +476,7 @@ class NetworkTrainer(object):
                     # validation with train=True
                     val_losses = []
                     for b in range(self.num_val_batches_per_epoch):
-                        l = self.run_iteration(self.val_gen, False)
+                        l = self.run_iteration(self.val_gen, self.epoch, False)
                         val_losses.append(l)
                     self.all_val_losses_tr_mode.append(np.mean(val_losses))
                     self.print_to_log_file("validation loss (train=True): %.4f" % self.all_val_losses_tr_mode[-1])
@@ -488,6 +490,12 @@ class NetworkTrainer(object):
             if not continue_training:
                 # allows for early stopping
                 break
+            gradients_str = "\n".join(f"[{filepath}: {gradient}]"
+                                      for filepath, gradient in self.gradients_map.items())
+            self.print_to_log_file(f"After this epoch, gradients are: \n{gradients_str}")
+            gradients_channel_str = "\n".join(f"[{filepath}: {gradient_channel}]"
+                                      for filepath, gradient_channel in self.gradients_map_channels.items())
+            self.print_to_log_file(f"After this epoch, gradients for 3 channles are: \n{gradients_channel_str}")
 
             self.epoch += 1
             self.print_to_log_file("This epoch took %f s\n" % (epoch_end_time - epoch_start_time))
@@ -573,7 +581,7 @@ class NetworkTrainer(object):
 
             if self.val_eval_criterion_MA > self.best_val_eval_criterion_MA:
                 self.best_val_eval_criterion_MA = self.val_eval_criterion_MA
-                #self.print_to_log_file("saving best epoch checkpoint...")
+                self.print_to_log_file(f"saving best epoch checkpoint..., epoch = {self.epoch}, best_val_criterion = {self.best_val_eval_criterion_MA}")
                 if self.save_best_checkpoint: self.save_checkpoint(join(self.output_folder, "model_best.model"))
 
             # Now see if the moving average of the train loss has improved. If yes then reset patience, else
@@ -581,7 +589,7 @@ class NetworkTrainer(object):
             if self.train_loss_MA + self.train_loss_MA_eps < self.best_MA_tr_loss_for_patience:
                 self.best_MA_tr_loss_for_patience = self.train_loss_MA
                 self.best_epoch_based_on_MA_tr_loss = self.epoch
-                #self.print_to_log_file("New best epoch (train loss MA): %03.4f" % self.best_MA_tr_loss_for_patience)
+                self.print_to_log_file("New best epoch (train loss MA): %03.4f" % self.best_MA_tr_loss_for_patience)
             else:
                 pass
                 #self.print_to_log_file("No improvement: current train MA %03.4f, best: %03.4f, eps is %03.4f" %
@@ -624,7 +632,7 @@ class NetworkTrainer(object):
             self.train_loss_MA = self.train_loss_MA_alpha * self.train_loss_MA + (1 - self.train_loss_MA_alpha) * \
                                  self.all_tr_losses[-1]
 
-    def run_iteration(self, data_generator, do_backprop=True, run_online_evaluation=False):
+    def run_iteration(self, data_generator, current_epoch, do_backprop=True, run_online_evaluation=False):
         data_dict = next(data_generator)
         data = data_dict['data']
         target = data_dict['target']
@@ -642,7 +650,7 @@ class NetworkTrainer(object):
             with autocast():
                 output = self.network(data)
                 del data
-                l = self.loss(output, target)
+                l = self.loss(output, target, current_epoch, do_backprop)
 
             if do_backprop:
                 self.amp_grad_scaler.scale(l).backward()
@@ -651,7 +659,7 @@ class NetworkTrainer(object):
         else:
             output = self.network(data)
             del data
-            l = self.loss(output, target)
+            l = self.loss(output, target, current_epoch, do_backprop)
 
             if do_backprop:
                 l.backward()
