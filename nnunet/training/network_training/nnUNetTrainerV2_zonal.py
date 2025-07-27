@@ -16,6 +16,8 @@ import torch
 import torch.nn as nn
 from nnunet.training.network_training.nnUNetTrainerV2 import nnUNetTrainerV2
 from nnunet.training.loss_functions.crossentropy import RobustCrossEntropyLoss
+from nnunet.training.loss_functions.focal_loss import FocalLossPerSample
+from nnunet.utilities.nd_softmax import softmax_helper
 
 
 class FocalLoss(nn.Module):
@@ -164,3 +166,15 @@ class nnUNetTrainerV2_zonal_FL(nnUNetTrainerV2_zonal):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage, unpack_data,
                          deterministic, fp16)
         self.loss = FL_and_CE_loss(alpha=0.5)
+
+class nnUNetTrainerV2_zonal_FocalLossPerSample(nnUNetTrainerV2_zonal):
+    """
+    Info for Fabian: same as internal nnUNetTrainerV2_2
+    """
+
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage, unpack_data,
+                         deterministic, fp16)
+        self.loss = FocalLossPerSample(apply_nonlin=softmax_helper, **{})
+        self.save_latest_only = False
