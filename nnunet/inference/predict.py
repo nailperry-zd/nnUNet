@@ -29,38 +29,8 @@ from nnunet.postprocessing.connected_components import load_remove_save, load_po
 from nnunet.training.model_restore import load_model_and_checkpoint_files
 from nnunet.training.network_training.nnUNetTrainer import nnUNetTrainer
 from nnunet.utilities.one_hot_encoding import to_one_hot
+from nnunet.utilities import shutil_sol
 use_alt_resampling = False
-
-import os
-import shutil
-
-
-def copyfile(src, dst, **kwargs):
-    """Similar to shutil.copyfile but accepts a directory as input for dst"""
-    if os.path.isdir(dst):
-        dst = os.path.join(dst, os.path.basename(src))
-    return shutil.copyfile(src, dst, **kwargs)
-
-
-def copytree(src, dst, ignore=None):
-    """Similar to shutil.copytree but makes sure that copyfile is used for copying"""
-    try:
-        shutil.copytree(src, dst,
-                        ignore=ignore,
-                        symlinks=False,
-                        ignore_dangling_symlinks=True,
-                        copy_function=copyfile)
-    except shutil.Error as e:
-        non_permission_errors = []
-        for error in e.args[0]:
-            msg = error[2] if isinstance(error, tuple) else error
-            if 'Operation not permitted' not in msg:
-                non_permission_errors.append(error)
-
-        if len(non_permission_errors) > 0:
-            raise shutil.Error(non_permission_errors)
-
-    return dst
 
 
 def preprocess_save_to_queue(preprocess_fn, q, list_of_lists, output_files, segs_from_prev_stage, classes,
@@ -316,7 +286,7 @@ def predict_cases(model, list_of_lists, output_filenames, folds, save_npz, num_t
         pp_file = join(model, "postprocessing.json")
         if isfile(pp_file):
             print("postprocessing...")
-            copyfile(pp_file, os.path.abspath(os.path.dirname(output_filenames[0])))
+            shutil_sol.copyfile(pp_file, os.path.abspath(os.path.dirname(output_filenames[0])))
             # for_which_classes stores for which of the classes everything but the largest connected component needs to be
             # removed
             for_which_classes, min_valid_obj_size = load_postprocessing(pp_file)
@@ -464,7 +434,7 @@ def predict_cases_fast(model, list_of_lists, output_filenames, folds, num_thread
         pp_file = join(model, "postprocessing.json")
         if isfile(pp_file):
             print("postprocessing...")
-            copyfile(pp_file, os.path.dirname(output_filenames[0]))
+            shutil_sol.copyfile(pp_file, os.path.dirname(output_filenames[0]))
             # for_which_classes stores for which of the classes everything but the largest connected component needs to be
             # removed
             for_which_classes, min_valid_obj_size = load_postprocessing(pp_file)
@@ -589,7 +559,7 @@ def predict_cases_fastest(model, list_of_lists, output_filenames, folds, num_thr
         pp_file = join(model, "postprocessing.json")
         if isfile(pp_file):
             print("postprocessing...")
-            copyfile(pp_file, os.path.dirname(output_filenames[0]))
+            shutil_sol.copyfile(pp_file, os.path.dirname(output_filenames[0]))
             # for_which_classes stores for which of the classes everything but the largest connected component needs to be
             # removed
             for_which_classes, min_valid_obj_size = load_postprocessing(pp_file)
@@ -669,7 +639,7 @@ def predict_from_folder(model: str, input_folder: str, output_folder: str, folds
     :return:
     """
     maybe_mkdir_p(output_folder)
-    copyfile(join(model, 'plans.pkl'), output_folder)
+    shutil_sol.copyfile(join(model, 'plans.pkl'), output_folder)
 
     assert isfile(join(model, "plans.pkl")), "Folder with saved model weights must contain a plans.pkl file"
     expected_num_modalities = load_pickle(join(model, "plans.pkl"))['num_modalities']

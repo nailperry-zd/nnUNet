@@ -14,7 +14,7 @@
 
 
 import shutil
-from picai_baseline.nndetection.training_docker import shutil_sol
+from nnunet.utilities import shutil_sol
 from collections import OrderedDict
 from multiprocessing import Pool
 from time import sleep
