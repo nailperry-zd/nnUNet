@@ -25,7 +25,7 @@ from multiprocessing import Process, Queue
 import torch
 import SimpleITK as sitk
 import shutil
-from picai_baseline.nndetection.training_docker import shutil_sol
+from nnunet.utilities import shutil_sol
 from multiprocessing import Pool
 from nnunet.postprocessing.connected_components import load_remove_save, load_postprocessing
 from nnunet.training.model_restore import load_model_and_checkpoint_files
