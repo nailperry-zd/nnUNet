@@ -38,6 +38,7 @@ from batchgenerators.utilities.file_and_folder_operations import *
 
 from nnunet.training.loss_functions.crossentropy import RobustCrossEntropyLoss
 from nnunet.training.network_training.nnUNet_variants.loss_function.nnUNetTrainerV2_focalLoss import FocalLoss
+from nnunet.training.network_training.spl import FocalLossNonBatch_SPL, FLCENonBatch_SPL
 
 # TODO: replace FocalLoss by fixed implemetation (and set smooth=0 in that one?)
 
@@ -549,7 +550,6 @@ class myTrainer_zonal_FL_1000(myTrainer_zonal_FL):
         self.max_num_epochs = 1000
 
 
-from nnunet.training.network_training.spl import FocalLossNonBatch_SPL
 class ZSSMNet_CELossNonBatch_SPL_HardFirst(myTrainer_zonal):
     """
     Info for Fabian: same as internal nnUNetTrainerV2_2
@@ -562,4 +562,14 @@ class ZSSMNet_CELossNonBatch_SPL_HardFirst(myTrainer_zonal):
         self.max_num_epochs = 1000
         print("Setting up self.loss = CELossNonBatch_SPL")
         self.loss = FocalLossNonBatch_SPL({'gamma': 0}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
+        self.save_latest_only = False
+
+class ZSSMNet_FLCELossNonBatch_SPL_HardFirst(myTrainer_zonal):
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
+                                              unpack_data, deterministic, fp16)
+        self.max_num_epochs = 1000
+        print("Setting up self.loss = FLCELossNonBatch_SPL")
+        self.loss = FLCENonBatch_SPL({'gamma':2}, {'gamma':0})
         self.save_latest_only = False

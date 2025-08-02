@@ -138,15 +138,6 @@ class nnUNetTrainerV2_CELossNonBatch_SPL_HardFirst(nnUNetTrainerV2):
         self.loss = FocalLossNonBatch_SPL({'gamma':0}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
         self.save_latest_only = False
 
-class nnUNetTrainerV2_FLCELossNonBatch_SPL_HardFirst(nnUNetTrainerV2):
-    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
-                 unpack_data=True, deterministic=True, fp16=False):
-        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
-                                              unpack_data, deterministic, fp16)
-        print("Setting up self.loss = FLCELossNonBatch_SPL")
-        self.loss = FLCENonBatch_SPL({'gamma':2}, {'gamma':0})
-        self.save_latest_only = False
-
 
 if __name__ == "__main__":
     # loss = torch.tensor([0, 0.8, 0.9, 0.1, 0.5, 1])  # loss = 1 - Dice
