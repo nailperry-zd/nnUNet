@@ -66,6 +66,74 @@ class FocalLossNonBatch_SPL(nn.Module):
             print(f"equally weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
             return result_fl.mean()
 
+
+class FLCENonBatch_SPL(nn.Module):
+
+    def __init__(self, fl_kwargs, ce_kwargs, epoch_for_weighting=0):
+        super().__init__()
+        self.fl = FocalLossNonBatch(apply_nonlin=softmax_helper, **fl_kwargs)
+        self.ce = FocalLossNonBatch(apply_nonlin=softmax_helper, **ce_kwargs)
+        self.epoch_for_weighting = epoch_for_weighting
+
+    def forward(self, logit, target, current_epoch, do_backprop, keys, gradients_map):
+        result_fl = self.fl(logit, target)
+        result_ce = self.ce(logit, target)
+        ls = 0.5 * result_fl + 0.5 * result_ce
+        if do_backprop and current_epoch > self.epoch_for_weighting:
+            spl = SymmetricSelfPacedLearning(current_epoch, gradients_map)
+            weighted_loss = spl(ls, keys)
+            print(f"dynamically weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
+            return weighted_loss.mean()
+        else:
+            print(f"equally weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
+            return ls.mean()
+
+class nnUNetTrainerV2_FocalLossNonBatch_SPL_HardFirst(nnUNetTrainerV2):
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
+                                              unpack_data, deterministic, fp16)
+        print("Setting up self.loss = FocalLossNonBatch_SPL_HardFirst")
+        self.loss = FocalLossNonBatch_SPL({}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
+        self.save_latest_only = False
+
+class nnUNetTrainerV2_FocalLossNonBatch_SPL_Baseline(nnUNetTrainerV2):
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
+                                              unpack_data, deterministic, fp16)
+        print("Setting up self.loss = FocalLossNonBatch_SPL_Baseline")
+        self.loss = FocalLossNonBatch_SPL({}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False}, epoch_for_weighting=1000)
+        self.save_latest_only = False
+
+class nnUNetTrainerV2_CELossNonBatch_SPL_Baseline(nnUNetTrainerV2):
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
+                                              unpack_data, deterministic, fp16)
+        print("Setting up self.loss = CELossNonBatch_SPL_Baseline")
+        self.loss = FocalLossNonBatch_SPL({'gamma':0}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False}, epoch_for_weighting=1000)
+        self.save_latest_only = False
+
+class nnUNetTrainerV2_CELossNonBatch_SPL_HardFirst(nnUNetTrainerV2):
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
+                                              unpack_data, deterministic, fp16)
+        print("Setting up self.loss = CELossNonBatch_SPL")
+        self.loss = FocalLossNonBatch_SPL({'gamma':0}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
+        self.save_latest_only = False
+
+class nnUNetTrainerV2_FLCELossNonBatch_SPL_HardFirst(nnUNetTrainerV2):
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
+                                              unpack_data, deterministic, fp16)
+        print("Setting up self.loss = FLCELossNonBatch_SPL")
+        self.loss = FLCENonBatch_SPL({'gamma':2}, {'gamma':0})
+        self.save_latest_only = False
+
+
 if __name__ == "__main__":
     # loss = torch.tensor([0, 0.8, 0.9, 0.1, 0.5, 1])  # loss = 1 - Dice
     # example_difficulty = loss
