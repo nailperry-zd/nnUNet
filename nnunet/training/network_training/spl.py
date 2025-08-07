@@ -71,8 +71,8 @@ class FLCENonBatch_SPL(nn.Module):
 
     def __init__(self, fl_kwargs, ce_kwargs, epoch_for_weighting=0):
         super().__init__()
-        self.fl = FocalLossNonBatch(apply_nonlin=softmax_helper, **fl_kwargs)
-        self.ce = FocalLossNonBatch(apply_nonlin=softmax_helper, **ce_kwargs)
+        self.fl = FocalLossPerSampleRaw(apply_nonlin=softmax_helper, **fl_kwargs)
+        self.ce = FocalLossPerSampleRaw(apply_nonlin=softmax_helper, **ce_kwargs)
         self.epoch_for_weighting = epoch_for_weighting
 
     def forward(self, logit, target, current_epoch, do_backprop, keys, gradients_map):
