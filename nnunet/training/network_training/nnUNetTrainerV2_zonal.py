@@ -19,6 +19,8 @@ from nnunet.training.loss_functions.crossentropy import RobustCrossEntropyLoss
 from nnunet.training.loss_functions.focal_loss import FocalLossPerSample, FocalLoss
 from nnunet.training.network_training.spl import FocalLossNonBatch_SPL
 from nnunet.utilities.nd_softmax import softmax_helper
+from nnunet.training.network_training.spl import FocalLossNonBatch_SPL, FLCENonBatch_SPL
+
 
 class FL_and_CE_loss(nn.Module):
     def __init__(self, fl_kwargs=None, ce_kwargs=None, alpha=0.5, aggregate="sum"):
@@ -115,4 +117,14 @@ class nnUNet_Zonal_CELossNonBatch_SPL_HardFirst(nnUNetTrainerV2_zonal):
                                               unpack_data, deterministic, fp16)
         print("Setting up self.loss = CELossNonBatch_SPL")
         self.loss = FocalLossNonBatch_SPL({'gamma':0}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
+        self.save_latest_only = False
+
+class nnUNet_Zonal_FLCELossNonBatch_SPL_HardFirst(nnUNetTrainerV2_zonal):
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
+                                              unpack_data, deterministic, fp16)
+        self.max_num_epochs = 1000
+        print("Setting up self.loss = FLCELossNonBatch_SPL")
+        self.loss = FLCENonBatch_SPL({'gamma':2}, {'gamma':0})
         self.save_latest_only = False
