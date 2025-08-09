@@ -9,14 +9,14 @@ softmax_helper = lambda x: F.softmax(x, 1)
 
 
 class SymmetricSelfPacedLearning(nn.Module):
-    def __init__(self, current_epoch, gradients_map):
+    def __init__(self, current_epoch, gradients_map, max_num_epochs=1000, max_weight=2):
         super().__init__()
         self.eta = 1
         self.current_epoch = current_epoch + 1
         # self.epoch_step_size = 2 / (1000 - 1)
-        self.epoch_step_size = 2 / 1000
-        self.weight_first = 2 - self.current_epoch * self.epoch_step_size
-        self.weight_last = 2 - self.weight_first
+        self.epoch_step_size = max_weight / max_num_epochs
+        self.weight_first = max_weight - self.current_epoch * self.epoch_step_size
+        self.weight_last = max_weight - self.weight_first
         print(f"weight_first = {self.weight_first}, weight_last={self.weight_last}")
         self.weight_map = self.compute_weight_map(gradients_map)
 
@@ -69,18 +69,20 @@ class FocalLossNonBatch_SPL(nn.Module):
 
 class FLCENonBatch_SPL(nn.Module):
 
-    def __init__(self, fl_kwargs, ce_kwargs, epoch_for_weighting=0):
+    def __init__(self, fl_kwargs, ce_kwargs, epoch_for_weighting=0, max_num_epochs=1000, max_weight=2):
         super().__init__()
         self.fl = FocalLossPerSampleRaw(apply_nonlin=softmax_helper, **fl_kwargs)
         self.ce = FocalLossPerSampleRaw(apply_nonlin=softmax_helper, **ce_kwargs)
         self.epoch_for_weighting = epoch_for_weighting
+        self.max_num_epochs = max_num_epochs
+        self.max_weight = max_weight
 
     def forward(self, logit, target, current_epoch, do_backprop, keys, gradients_map):
         result_fl = self.fl(logit, target)
         result_ce = self.ce(logit, target)
         ls = 0.5 * result_fl + 0.5 * result_ce
         if do_backprop and current_epoch > self.epoch_for_weighting:
-            spl = SymmetricSelfPacedLearning(current_epoch, gradients_map)
+            spl = SymmetricSelfPacedLearning(current_epoch, gradients_map, self.max_num_epochs, self.max_weight)
             weighted_loss = spl(ls, keys)
             print(f"dynamically weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
             return weighted_loss.mean()
