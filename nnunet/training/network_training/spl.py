@@ -14,7 +14,7 @@ class SymmetricSelfPacedLearning(nn.Module):
         self.current_epoch = current_epoch
         amp = span / 2
         mid = min + amp
-        factor = 1 - 2 * epochs / (max_num_epochs - 1)
+        factor = 1 - 2 * current_epoch / (max_num_epochs - 1)
         # weight_first: linearly decreases from (min + span) at epoch=0 to min at epoch=max_num_epochs-1
         self.weight_first = mid + amp * factor
         # weight_last: linearly increases from min at epoch=0 to (min + span) at epoch=max_num_epochs-1
