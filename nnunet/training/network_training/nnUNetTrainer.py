@@ -360,7 +360,7 @@ class nnUNetTrainer(NetworkTrainer):
         self.intensity_properties = plans['dataset_properties']['intensityproperties']
         self.normalization_schemes = plans['normalization_schemes']
         self.base_num_features = plans['base_num_features']
-        self.num_input_channels = plans['num_modalities'] + 3 
+        self.num_input_channels = plans['num_modalities']
         self.num_classes = plans['num_classes'] + 1  # background is no longer in num_classes
         self.classes = plans['all_classes']
         self.use_mask_for_norm = plans['use_mask_for_norm']
