@@ -83,7 +83,7 @@ class nnUNetTrainerV2_zonal_FL(nnUNetTrainerV2_zonal):
                          deterministic, fp16)
         self.loss = FL_and_CE_loss(alpha=0.5)
 
-class nnUNet_Zonal_FocalLossNonBatch_SPL_HardFirst(nnUNetTrainerV2_zonal):
+class nnUNet_302WG_FocalLossNonBatch_SPL_HardFirst(nnUNetTrainerV2_zonal):
     def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
                  unpack_data=True, deterministic=True, fp16=False):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
@@ -92,7 +92,7 @@ class nnUNet_Zonal_FocalLossNonBatch_SPL_HardFirst(nnUNetTrainerV2_zonal):
         self.loss = FocalLossNonBatch_SPL({}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
         self.save_latest_only = False
 
-class nnUNet_Zonal_FocalLossNonBatch_SPL_Baseline(nnUNetTrainerV2_zonal):
+class nnUNet_302WG_FocalLossNonBatch_SPL_Baseline(nnUNetTrainerV2_zonal):
     def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
                  unpack_data=True, deterministic=True, fp16=False):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
@@ -101,7 +101,7 @@ class nnUNet_Zonal_FocalLossNonBatch_SPL_Baseline(nnUNetTrainerV2_zonal):
         self.loss = FocalLossNonBatch_SPL({}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False}, epoch_for_weighting=1000)
         self.save_latest_only = False
 
-class nnUNet_Zonal_CELossNonBatch_SPL_Baseline(nnUNetTrainerV2_zonal):
+class nnUNet_302WG_CELossNonBatch_SPL_Baseline(nnUNetTrainerV2_zonal):
     def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
                  unpack_data=True, deterministic=True, fp16=False):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
@@ -110,7 +110,7 @@ class nnUNet_Zonal_CELossNonBatch_SPL_Baseline(nnUNetTrainerV2_zonal):
         self.loss = FocalLossNonBatch_SPL({'gamma':0}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False}, epoch_for_weighting=1000)
         self.save_latest_only = False
 
-class nnUNet_Zonal_CELossNonBatch_SPL_HardFirst(nnUNetTrainerV2_zonal):
+class nnUNet_302WG_CELossNonBatch_SPL_HardFirst(nnUNetTrainerV2_zonal):
     def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
                  unpack_data=True, deterministic=True, fp16=False):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
@@ -119,7 +119,7 @@ class nnUNet_Zonal_CELossNonBatch_SPL_HardFirst(nnUNetTrainerV2_zonal):
         self.loss = FocalLossNonBatch_SPL({'gamma':0}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
         self.save_latest_only = False
 
-class nnUNet_Zonal_FLCELossNonBatch_SPL_HardFirst(nnUNetTrainerV2_zonal):
+class nnUNet_302WG_FLCELossNonBatch_SPL_HardFirst(nnUNetTrainerV2_zonal):
     def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
                  unpack_data=True, deterministic=True, fp16=False):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
@@ -129,7 +129,7 @@ class nnUNet_Zonal_FLCELossNonBatch_SPL_HardFirst(nnUNetTrainerV2_zonal):
         self.loss = FLCENonBatch_SPL({'gamma':2}, {'gamma':0}, max_num_epochs=self.max_num_epochs, max_weight=2)
         self.save_latest_only = False
 
-class nnUNet_Zonal_FLCELossNonBatch_SPL_HardFirst_MW4(nnUNetTrainerV2_zonal):
+class nnUNet_302WG_FLCELossNonBatch_SPL_HardFirst_MW4(nnUNetTrainerV2_zonal):
     def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
                  unpack_data=True, deterministic=True, fp16=False):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
@@ -139,7 +139,7 @@ class nnUNet_Zonal_FLCELossNonBatch_SPL_HardFirst_MW4(nnUNetTrainerV2_zonal):
         self.loss = FLCENonBatch_SPL({'gamma':2}, {'gamma':0}, max_num_epochs=self.max_num_epochs, max_weight=4)
         self.save_latest_only = False
 
-class nnUNet_Zonal_FLCELossNonBatch_SPL_HardFirst_EW(nnUNetTrainerV2_zonal):
+class nnUNet_302WG_FLCELossNonBatch_SPL_HardFirst_EW(nnUNetTrainerV2_zonal):
     def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
                  unpack_data=True, deterministic=True, fp16=False):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
