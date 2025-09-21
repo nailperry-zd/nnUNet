@@ -10,15 +10,16 @@ softmax_helper = lambda x: F.softmax(x, 1)
 
 
 class SymmetricSelfPacedLearning(nn.Module):
-    def __init__(self, current_epoch, gradients_map, max_num_epochs=1000, max_weight=2):
+    def __init__(self, current_epoch, gradients_map, max_num_epochs=1000, max_weight=2, reverse=False):
         super().__init__()
         self.eta = 1
+        self.reverse = reverse
         self.current_epoch = current_epoch + 1
         # self.epoch_step_size = 2 / (1000 - 1)
         self.epoch_step_size = max_weight / max_num_epochs
         self.weight_first = max_weight - self.current_epoch * self.epoch_step_size
         self.weight_last = max_weight - self.weight_first
-        print(f"weight_first = {self.weight_first}, weight_last={self.weight_last}")
+        print(f"reverse={self.reverse}, weight_first = {self.weight_first}, weight_last={self.weight_last}")
         self.weight_map = self.compute_weight_map(gradients_map)
 
     def forward(self, loss, keys):
@@ -32,7 +33,7 @@ class SymmetricSelfPacedLearning(nn.Module):
 
     def compute_weight_map(self, difficulty_map):
         # Sort example_difficulty based on values
-        sorted_items = sorted(difficulty_map.items(), key=lambda item: item[1], reverse=True)
+        sorted_items = sorted(difficulty_map.items(), key=lambda item: item[1], reverse=self.reverse)
         sorted_indices = [item[0] for item in sorted_items]  # Get indices based on sorted keys
 
         # Calculate the batch step size
@@ -48,55 +49,21 @@ class SymmetricSelfPacedLearning(nn.Module):
 
         return weight_map
 
-
-class SoftDiceLoss_SPL(nn.Module):
-    def __init__(self, soft_dice_kwargs, epoch_for_weighting=0):
-        super().__init__()
-        self.dice = SoftDice(apply_nonlin=softmax_helper, **soft_dice_kwargs)
-        self.epoch_for_weighting = epoch_for_weighting
-
-    def forward(self, x, y, current_epoch, do_backprop, keys, gradients_map):
-        dice_index = self.dice(x, y)
-        print(f"dc score is {dice_index}, device={dice_index.device}")
-        dice_loss = 1 - dice_index
-        if do_backprop and current_epoch > self.epoch_for_weighting:
-            spl = SymmetricSelfPacedLearning(current_epoch, gradients_map)
-            weighted_loss = spl(dice_loss, keys)
-            print(f"dynamically weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
-            return weighted_loss.mean()
-        else:
-            print(f"equally weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
-            return dice_loss.mean()
-
-
 class FocalLossNonBatch_SPL(nn.Module):
-    """
-    copy from: https://github.com/Hsuxu/Loss_ToolBox-PyTorch/blob/master/FocalLoss/FocalLoss.py
-    This is a implementation of Focal Loss with smooth label cross entropy supported which is proposed in
-    'Focal Loss for Dense Object Detection. (https://arxiv.org/abs/1708.02002)'
-        Focal_Loss= -1*alpha*(1-pt)*log(pt)
-    :param num_class:
-    :param alpha: (tensor) 3D or 4D the scalar factor for this criterion
-    :param gamma: (float,double) gamma > 0 reduces the relative loss for well-classified examples (p>0.5) putting more
-                    focus on hard misclassified example
-    :param smooth: (float,double) smooth value when cross entropy
-    :param balance_index: (int) balance class index, should be specific when alpha is float
-    :param size_average: (bool, optional) By default, the losses are averaged over each loss element in the batch.
-    """
 
-    def __init__(self, fl_kwargs, soft_dice_kwargs, epoch_for_weighting=0):
+    def __init__(self, fl_kwargs, epoch_for_weighting=0, max_num_epochs=1000, max_weight=2, reverse=False):
         super().__init__()
         self.fl = FocalLossNonBatch(apply_nonlin=softmax_helper, **fl_kwargs)
-        self.dice = SoftDice(apply_nonlin=softmax_helper, **soft_dice_kwargs)
         self.epoch_for_weighting = epoch_for_weighting
+        self.max_num_epochs = max_num_epochs
+        self.max_weight = max_weight
+        self.reverse = reverse
 
     def forward(self, logit, target, current_epoch, do_backprop, keys, gradients_map):
         result_fl = self.fl(logit, target)
         print(f"FocalLoss is {result_fl}, device={result_fl.device}")
-        dice_index = self.dice(logit, target)
-        print(f"dc score is {dice_index}, device={dice_index.device}")
         if do_backprop and current_epoch > self.epoch_for_weighting:
-            spl = SymmetricSelfPacedLearning(current_epoch, gradients_map)
+            spl = SymmetricSelfPacedLearning(current_epoch, gradients_map, self.max_num_epochs, self.max_weight, self.reverse)
             weighted_loss = spl(result_fl, keys)
             print(f"dynamically weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
             return weighted_loss.mean()
@@ -107,20 +74,21 @@ class FocalLossNonBatch_SPL(nn.Module):
 
 class FLCENonBatch_SPL(nn.Module):
 
-    def __init__(self, fl_kwargs, ce_kwargs, epoch_for_weighting=0, max_num_epochs=1000, max_weight=2):
+    def __init__(self, fl_kwargs, ce_kwargs, epoch_for_weighting=0, max_num_epochs=1000, max_weight=2, reverse=False):
         super().__init__()
         self.fl = FocalLossNonBatch(apply_nonlin=softmax_helper, **fl_kwargs)
         self.ce = FocalLossNonBatch(apply_nonlin=softmax_helper, **ce_kwargs)
         self.epoch_for_weighting = epoch_for_weighting
         self.max_num_epochs = max_num_epochs
         self.max_weight = max_weight
+        self.reverse = reverse
 
     def forward(self, logit, target, current_epoch, do_backprop, keys, gradients_map):
         result_fl = self.fl(logit, target)
         result_ce = self.ce(logit, target)
         ls = 0.5 * result_fl + 0.5 * result_ce
         if do_backprop and current_epoch > self.epoch_for_weighting:
-            spl = SymmetricSelfPacedLearning(current_epoch, gradients_map, self.max_num_epochs, self.max_weight)
+            spl = SymmetricSelfPacedLearning(current_epoch, gradients_map, self.max_num_epochs, self.max_weight, self.reverse)
             weighted_loss = spl(ls, keys)
             print(f"dynamically weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
             return weighted_loss.mean()
@@ -128,33 +96,14 @@ class FLCENonBatch_SPL(nn.Module):
             print(f"equally weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
             return ls.mean()
 
-class nnUNetTrainerV2_SoftDiceLoss_SPL_HardFirst(nnUNetTrainerV2):
+class nnUNetTrainerV2_FocalLossNonBatch_SPL_EasyFirst(nnUNetTrainerV2):
     def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
                  unpack_data=True, deterministic=True, fp16=False):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
                                               unpack_data, deterministic, fp16)
-        print("Setting up self.loss = SoftDiceLoss_SPL_HardFirst")
-        self.loss = SoftDiceLoss_SPL({'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
+        print("Setting up self.loss = FocalLossNonBatch_SPL_EasyFirst")
+        self.loss = FocalLossNonBatch_SPL({})
         self.save_latest_only = False
-
-class nnUNetTrainerV2_SoftDiceLoss_SPL_Baseline(nnUNetTrainerV2):
-    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
-                 unpack_data=True, deterministic=True, fp16=False):
-        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
-                                              unpack_data, deterministic, fp16)
-        print("Setting up self.loss = SoftDiceLoss_SPL_Baseline")
-        self.loss = SoftDiceLoss_SPL({'batch_dice': False, 'smooth': 1e-5, 'do_bg': False}, epoch_for_weighting=1000)
-        self.save_latest_only = False
-
-class nnUNetTrainerV2_SoftDiceLoss_SPL_Test(nnUNetTrainerV2):
-    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
-                 unpack_data=True, deterministic=True, fp16=False):
-        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
-                                              unpack_data, deterministic, fp16)
-        print("Setting up self.loss = SoftDiceLoss_SPL_Test")
-        self.loss = SoftDiceLoss_SPL({'batch_dice': False, 'smooth': 1e-5, 'do_bg': False}, epoch_for_weighting=0)
-        self.save_latest_only = False
-
 
 class nnUNetTrainerV2_FocalLossNonBatch_SPL_HardFirst(nnUNetTrainerV2):
     def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
@@ -162,7 +111,7 @@ class nnUNetTrainerV2_FocalLossNonBatch_SPL_HardFirst(nnUNetTrainerV2):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
                                               unpack_data, deterministic, fp16)
         print("Setting up self.loss = FocalLossNonBatch_SPL_HardFirst")
-        self.loss = FocalLossNonBatch_SPL({}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
+        self.loss = FocalLossNonBatch_SPL({}, reverse=True)
         self.save_latest_only = False
 
 class nnUNetTrainerV2_FocalLossNonBatch_SPL_Baseline(nnUNetTrainerV2):
@@ -171,7 +120,7 @@ class nnUNetTrainerV2_FocalLossNonBatch_SPL_Baseline(nnUNetTrainerV2):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
                                               unpack_data, deterministic, fp16)
         print("Setting up self.loss = FocalLossNonBatch_SPL_Baseline")
-        self.loss = FocalLossNonBatch_SPL({}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False}, epoch_for_weighting=1000)
+        self.loss = FocalLossNonBatch_SPL({}, epoch_for_weighting=1000)
         self.save_latest_only = False
 
 class nnUNetTrainerV2_CELossNonBatch_SPL_Baseline(nnUNetTrainerV2):
@@ -180,7 +129,7 @@ class nnUNetTrainerV2_CELossNonBatch_SPL_Baseline(nnUNetTrainerV2):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
                                               unpack_data, deterministic, fp16)
         print("Setting up self.loss = CELossNonBatch_SPL_Baseline")
-        self.loss = FocalLossNonBatch_SPL({'gamma':0}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False}, epoch_for_weighting=1000)
+        self.loss = FocalLossNonBatch_SPL({'gamma':0}, epoch_for_weighting=1000)
         self.save_latest_only = False
 
 class nnUNetTrainerV2_CELossNonBatch_SPL_HardFirst(nnUNetTrainerV2):
@@ -188,8 +137,17 @@ class nnUNetTrainerV2_CELossNonBatch_SPL_HardFirst(nnUNetTrainerV2):
                  unpack_data=True, deterministic=True, fp16=False):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
                                               unpack_data, deterministic, fp16)
-        print("Setting up self.loss = CELossNonBatch_SPL")
-        self.loss = FocalLossNonBatch_SPL({'gamma':0}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
+        print("Setting up self.loss = CELossNonBatch_RSSPL")
+        self.loss = FocalLossNonBatch_SPL({'gamma':0}, reverse=True)
+        self.save_latest_only = False
+
+class nnUNetTrainerV2_CELossNonBatch_SPL_EasyFirst(nnUNetTrainerV2):
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
+                                              unpack_data, deterministic, fp16)
+        print("Setting up self.loss = CELossNonBatch_SSPL")
+        self.loss = FocalLossNonBatch_SPL({'gamma':0})
         self.save_latest_only = False
 
 class nnUNet_302_FLCELossNonBatch_SPL_HardFirst(nnUNetTrainerV2):
@@ -198,8 +156,8 @@ class nnUNet_302_FLCELossNonBatch_SPL_HardFirst(nnUNetTrainerV2):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
                                               unpack_data, deterministic, fp16)
         self.max_num_epochs = 1000
-        print("Setting up self.loss = FLCELossNonBatch_SPL")
-        self.loss = FLCENonBatch_SPL({'gamma':2}, {'gamma':0}, max_num_epochs=self.max_num_epochs, max_weight=2)
+        print("Setting up self.loss = FLCELossNonBatch_RSSPL")
+        self.loss = FLCENonBatch_SPL({'gamma':2}, {'gamma':0}, max_num_epochs=self.max_num_epochs, max_weight=2, reverse=True)
         self.save_latest_only = False
 
 class nnUNet_302_FLCELossNonBatch_SPL_HardFirst_MW4(nnUNetTrainerV2):
@@ -208,8 +166,8 @@ class nnUNet_302_FLCELossNonBatch_SPL_HardFirst_MW4(nnUNetTrainerV2):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
                                               unpack_data, deterministic, fp16)
         self.max_num_epochs = 1000
-        print("Setting up self.loss = FLCELossNonBatch_SPL_MW4")
-        self.loss = FLCENonBatch_SPL({'gamma':2}, {'gamma':0}, max_num_epochs=self.max_num_epochs, max_weight=4)
+        print("Setting up self.loss = FLCELossNonBatch_RSSPL_MW4")
+        self.loss = FLCENonBatch_SPL({'gamma':2}, {'gamma':0}, max_num_epochs=self.max_num_epochs, max_weight=4, reverse=True)
         self.save_latest_only = False
 
 class nnUNet_302_FLCELossNonBatch_SPL_HardFirst_EW(nnUNetTrainerV2):
