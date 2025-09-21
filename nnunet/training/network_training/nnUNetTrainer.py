@@ -586,19 +586,11 @@ class nnUNetTrainer(NetworkTrainer):
             if overwrite or (not isfile(join(output_folder, fname + ".nii.gz"))) or \
                     (save_softmax and not isfile(join(output_folder, fname + ".npz"))):
                 data = np.load(self.dataset[k]['data_file'])['data']
-                seg = np.load(self.dataset[k]['seg_from_prev_stage_file'])['data']
-
-                data = data[:, :3, ...]
-              
-                seg_onehot = np.zeros((3, *seg.shape[0:]), dtype=seg.dtype)
-                for i, l in enumerate([0,1,2]):
-                    seg_onehot[i][seg == l] = 1
-                data_c = np.concatenate((data[:-1], seg_onehot), 0)
 
                 print(k, data.shape)
                 data[-1][data[-1] == -1] = 0
 
-                softmax_pred = self.predict_preprocessed_data_return_seg_and_softmax(data_c,
+                softmax_pred = self.predict_preprocessed_data_return_seg_and_softmax(data[:-1],
                                                                                      do_mirroring=do_mirroring,
                                                                                      mirror_axes=mirror_axes,
                                                                                      use_sliding_window=use_sliding_window,
