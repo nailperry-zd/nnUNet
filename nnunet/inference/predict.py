@@ -62,7 +62,7 @@ def preprocess_save_to_queue(preprocess_fn, q, list_of_lists, output_files, segs
                 seg_reshaped = to_one_hot(seg_reshaped) # 3 classes
                 print(f"before integrating seg: {d.shape}")
                 print(f"integrating seg_reshaped: {seg_reshaped.shape}")
-                d = np.vstack((d, seg_reshaped)).astype(np.float32)
+                # d = np.vstack((d, seg_reshaped)).astype(np.float32)
             """There is a problem with python process communication that prevents us from communicating objects 
             larger than 2 GB between processes (basically when the length of the pickle string that will be sent is 
             communicated by the multiprocessing.Pipe object then the placeholder (I think) does not allow for long 
@@ -70,7 +70,7 @@ def preprocess_save_to_queue(preprocess_fn, q, list_of_lists, output_files, segs
             patching system python code. We circumvent that problem here by saving softmax_pred to a npy file that will 
             then be read (and finally deleted) by the Process. save_segmentation_nifti_from_softmax can take either 
             filename or np.ndarray and will handle this automatically"""
-            print(f"after integrating seg: {d.shape}")
+            print(d.shape)
             if np.prod(d.shape) > (2e9 / 4 * 0.85):  # *0.85 just to be save, 4 because float32 is 4 bytes
                 print(
                     "This output is too large for python process-process communication. "
