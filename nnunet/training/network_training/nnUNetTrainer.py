@@ -587,6 +587,8 @@ class nnUNetTrainer(NetworkTrainer):
                     (save_softmax and not isfile(join(output_folder, fname + ".npz"))):
                 data = np.load(self.dataset[k]['data_file'])['data']
                 seg = np.load(self.dataset[k]['seg_from_prev_stage_file'])['data']
+
+                data = data[:, :3, ...]
               
                 seg_onehot = np.zeros((3, *seg.shape[0:]), dtype=seg.dtype)
                 for i, l in enumerate([0,1,2]):
