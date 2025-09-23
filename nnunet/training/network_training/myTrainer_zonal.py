@@ -275,6 +275,15 @@ class myTrainer_zonal(nnUNetTrainer):
         self.network.do_ds = ds
         return ret
 
+    def print_size(self, name, obj):
+        print(f"{name}: type={type(obj)}")
+        if hasattr(obj, "shape"):  # NumPy arrays, torch tensors, pandas DataFrames
+            print(f"{name} shape: {obj.shape}")
+        elif hasattr(obj, "__len__"):  # lists, dicts, strings, etc.
+            print(f"{name} length: {len(obj)}")
+        else:  # fallback
+            print(f"{name} has no len() or shape attribute")
+
     def run_iteration(self, data_generator, current_epoch, do_backprop=True, run_online_evaluation=False):
         """
         gradient clipping improves training stability
@@ -288,6 +297,14 @@ class myTrainer_zonal(nnUNetTrainer):
         data = data_dict['data']
         target = data_dict['target']
         keys = data_dict['keys']
+
+        self.print_size("data", data)
+        self.print_size("target", target[0])
+
+        # last channel is the background mask
+        background_mask = data[:, 3:4, ...]
+        # invert to get prostate mask and detach from graph
+        prostate_mask = (1 - background_mask).detach().cpu()
 
         nnunet.utilities.visualize_data_seg.visualize_data_seg_aug(data, target)
 
@@ -314,13 +331,22 @@ class myTrainer_zonal(nnUNetTrainer):
                 self.amp_grad_scaler.step(self.optimizer)
                 self.amp_grad_scaler.update()
 
-                # Calculate the L2 norm for each batch
-                data_grad = data.grad.cpu().numpy()
-                for i in range(data_grad.shape[0]):  # Iterate over each batch
-                    norm = np.linalg.norm(data_grad[i])  # Calculate L2 norm
+                # Calculate the L2 norm for each batch---only take prostate area into account
+                data_grad = data.grad.cpu()
+                data_grad_numpy = data_grad.numpy()
+                # self.print_size("data_grad", data_grad)
+                # self.print_size("prostate_mask", prostate_mask)
+                data_grad_numpy_in_gland = (data_grad * prostate_mask).numpy()
+                for i in range(data_grad_numpy_in_gland.shape[0]):  # Iterate over each batch
+                    norm_origin = np.linalg.norm(data_grad_numpy[i])  # Calculate L2 norm
+                    norm = np.linalg.norm(data_grad_numpy_in_gland[i])  # Calculate L2 norm
+
+                    print(f"sample {keys[i]}: norm_origin = {norm_origin}, norm_in_gland = {norm}")
+
                     norm_channels = []
-                    for j in range(data_grad.shape[1]):
-                        norm_per_channel = np.linalg.norm(data_grad[i][j])  # Calculate L2 norm for each channel
+                    for j in range(data_grad_numpy_in_gland.shape[1]):
+                        norm_per_channel = np.linalg.norm(
+                            data_grad_numpy_in_gland[i][j])  # Calculate L2 norm for each channel
                         norm_channels.append(norm_per_channel)
                     self.gradients_map[keys[i]] = norm
                     self.gradients_map_channels[keys[i]] = norm_channels
