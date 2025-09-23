@@ -308,26 +308,26 @@ class myTrainer_zonal(nnUNetTrainer):
 
         nnunet.utilities.visualize_data_seg.visualize_data_seg_aug(data, target)
 
-        import SimpleITK as sitk
-        data_np = data[0].cpu().numpy()
-        for c in range(data_np.shape[0]):  # channel
-            vol = data_np[c].astype('float32')  # [16, 320, 320]
-
-            # convert to SimpleITK image
-            vol_sitk = sitk.GetImageFromArray(vol)
-
-            # save as nii.gz
-            filename = fr"/hpc/dzha937/picai/workdir/nnUNet_results/nnUNet/3d_fullres/data_{keys[0]}_c{c}.nii.gz"
-            sitk.WriteImage(vol_sitk, filename)
-
-
-        print(f"np.unique(background_mask)={np.unique(background_mask.cpu().numpy())}")
-
-        mask_np = prostate_mask[0][0].numpy()
-        # Convert numpy array to SimpleITK image
-        mask_sitk = sitk.GetImageFromArray(mask_np)
-        # Save as .nii.gz
-        sitk.WriteImage(mask_sitk, rf"/hpc/dzha937/picai/workdir/nnUNet_results/nnUNet/3d_fullres/{keys[0]}_prostate_mask.nii.gz")
+        # import SimpleITK as sitk
+        # data_np = data[0].cpu().numpy()
+        # for c in range(data_np.shape[0]):  # channel
+        #     vol = data_np[c].astype('float32')  # [16, 320, 320]
+        #
+        #     # convert to SimpleITK image
+        #     vol_sitk = sitk.GetImageFromArray(vol)
+        #
+        #     # save as nii.gz
+        #     filename = fr"/hpc/dzha937/picai/workdir/nnUNet_results/nnUNet/3d_fullres/data_{keys[0]}_c{c}.nii.gz"
+        #     sitk.WriteImage(vol_sitk, filename)
+        #
+        #
+        # print(f"np.unique(background_mask)={np.unique(background_mask.cpu().numpy())}")
+        #
+        # mask_np = prostate_mask[0][0].numpy()
+        # # Convert numpy array to SimpleITK image
+        # mask_sitk = sitk.GetImageFromArray(mask_np)
+        # # Save as .nii.gz
+        # sitk.WriteImage(mask_sitk, rf"/hpc/dzha937/picai/workdir/nnUNet_results/nnUNet/3d_fullres/{keys[0]}_prostate_mask.nii.gz")
 
         data = maybe_to_torch(data)
         target = maybe_to_torch(target)
