@@ -550,7 +550,7 @@ class myTrainer_zonal_FL_1000(myTrainer_zonal_FL):
         self.max_num_epochs = 1000
 
 
-class ZSSMNet_CELossNonBatch_SPL_HardFirst(myTrainer_zonal):
+class ZSSMNet_WG_CELossNonBatch_SPL_HardFirst(myTrainer_zonal):
     """
     Info for Fabian: same as internal nnUNetTrainerV2_2
     """
@@ -564,7 +564,7 @@ class ZSSMNet_CELossNonBatch_SPL_HardFirst(myTrainer_zonal):
         self.loss = FocalLossNonBatch_SPL({'gamma': 0}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
         self.save_latest_only = False
 
-class ZSSMNet_FLCELossNonBatch_SPL_HardFirst(myTrainer_zonal):
+class ZSSMNet_WG_FLCELossNonBatch_SPL_HardFirst(myTrainer_zonal):
     def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
                  unpack_data=True, deterministic=True, fp16=False):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
@@ -573,7 +573,7 @@ class ZSSMNet_FLCELossNonBatch_SPL_HardFirst(myTrainer_zonal):
         print("Setting up self.loss = FLCELossNonBatch_SPL")
         self.loss = FLCENonBatch_SPL({'gamma':2}, {'gamma':0})
         self.save_latest_only = False
-class ZSSMNet_FLCELossNonBatch_SPL_HardFirst_MW4(myTrainer_zonal):
+class ZSSMNet_WG_FLCELossNonBatch_SPL_HardFirst_MW4(myTrainer_zonal):
     def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
                  unpack_data=True, deterministic=True, fp16=False):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
@@ -583,7 +583,7 @@ class ZSSMNet_FLCELossNonBatch_SPL_HardFirst_MW4(myTrainer_zonal):
         self.loss = FLCENonBatch_SPL({'gamma':2}, {'gamma':0}, max_num_epochs=self.max_num_epochs, max_weight=4)
         self.save_latest_only = False
 
-class ZSSMNet_FLCELossNonBatch_SPL_HardFirst_EW(myTrainer_zonal):
+class ZSSMNet_WG_FLCELossNonBatch_SPL_HardFirst_EW(myTrainer_zonal):
     def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
                  unpack_data=True, deterministic=True, fp16=False):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
