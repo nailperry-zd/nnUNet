@@ -17,7 +17,7 @@ class SymmetricSelfPacedLearning(nn.Module):
         self.epoch_step_size = max_weight / max_num_epochs
         self.weight_first = max_weight - self.current_epoch * self.epoch_step_size
         self.weight_last = max_weight - self.weight_first
-        print(f"weight_first = {self.weight_first}, weight_last={self.weight_last}")
+        print(f"max_num_epochs={max_num_epochs}, weight_first = {self.weight_first}, weight_last={self.weight_last}")
         self.weight_map = self.compute_weight_map(gradients_map)
 
     def forward(self, loss, keys):
@@ -49,16 +49,17 @@ class SymmetricSelfPacedLearning(nn.Module):
 
 
 class FocalLossNonBatch_SPL(nn.Module):
-    def __init__(self, fl_kwargs, soft_dice_kwargs, epoch_for_weighting=0):
+    def __init__(self, fl_kwargs, soft_dice_kwargs, max_num_epochs=1000, epoch_for_weighting=0):
         super().__init__()
         self.fl = FocalLossPerSampleRaw(apply_nonlin=softmax_helper, **fl_kwargs)
         self.epoch_for_weighting = epoch_for_weighting
+        self.max_num_epochs = max_num_epochs
 
     def forward(self, logit, target, current_epoch, do_backprop, keys, gradients_map):
         result_fl = self.fl(logit, target)
         print(f"FocalLoss is {result_fl}, device={result_fl.device}, input_shape={logit.shape}")
         if do_backprop and current_epoch > self.epoch_for_weighting:
-            spl = SymmetricSelfPacedLearning(current_epoch, gradients_map)
+            spl = SymmetricSelfPacedLearning(current_epoch, gradients_map, self.max_num_epochs)
             weighted_loss = spl(result_fl, keys)
             print(f"dynamically weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
             return weighted_loss.mean()
