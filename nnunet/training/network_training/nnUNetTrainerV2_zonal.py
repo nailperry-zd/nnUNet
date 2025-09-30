@@ -124,9 +124,19 @@ class nnUNet_302WG_CELossNonBatch_SPL_HardFirst_500(nnUNetTrainerV2_zonal):
                  unpack_data=True, deterministic=True, fp16=False):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
                                               unpack_data, deterministic, fp16)
-        print("Setting up self.loss = CELossNonBatch_SPL")
+        print("Setting up self.loss = CELossNonBatch_RSSPL_500")
         self.max_num_epochs = 500
         self.loss = FocalLossNonBatch_SPL({'gamma':0}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False}, max_num_epochs=self.max_num_epochs)
+        self.save_latest_only = False
+
+class nnUNet_302WG_CELossNonBatch_SPL_EasyFirst_500(nnUNetTrainerV2_zonal):
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
+                                              unpack_data, deterministic, fp16)
+        print("Setting up self.loss = CELossNonBatch_SSPL_500")
+        self.max_num_epochs = 500
+        self.loss = FocalLossNonBatch_SPL({'gamma':0}, {'batch_dice': False, 'smooth': 1e-5, 'do_bg': False}, max_num_epochs=self.max_num_epochs, reverse=False)
         self.save_latest_only = False
 
 class nnUNet_302WG_FLCELossNonBatch_SPL_HardFirst(nnUNetTrainerV2_zonal):
@@ -149,12 +159,42 @@ class nnUNet_302WG_FLCELossNonBatch_SPL_HardFirst_MW4(nnUNetTrainerV2_zonal):
         self.loss = FLCENonBatch_SPL({'gamma':2}, {'gamma':0}, max_num_epochs=self.max_num_epochs, max_weight=4)
         self.save_latest_only = False
 
+class nnUNet_302WG_FLCELossNonBatch_SPL_HardFirst_MW4_500(nnUNetTrainerV2_zonal):
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
+                                              unpack_data, deterministic, fp16)
+        self.max_num_epochs = 500
+        print("Setting up self.loss = FLCELossNonBatch_RSSPL_MW4_500")
+        self.loss = FLCENonBatch_SPL({'gamma':2}, {'gamma':0}, max_num_epochs=self.max_num_epochs, max_weight=4)
+        self.save_latest_only = False
+
+class nnUNet_302WG_FLCELossNonBatch_SPL_EasyFirst_MW4_500(nnUNetTrainerV2_zonal):
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
+                                              unpack_data, deterministic, fp16)
+        self.max_num_epochs = 500
+        print("Setting up self.loss = FLCELossNonBatch_SSPL_MW4_500")
+        self.loss = FLCENonBatch_SPL({'gamma':2}, {'gamma':0}, max_num_epochs=self.max_num_epochs, max_weight=4, reverse=False)
+        self.save_latest_only = False
+
 class nnUNet_302WG_FLCELossNonBatch_SPL_HardFirst_EW(nnUNetTrainerV2_zonal):
     def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
                  unpack_data=True, deterministic=True, fp16=False):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
                                               unpack_data, deterministic, fp16)
         self.max_num_epochs = 1000
+        print("Setting up self.loss = FLCELossNonBatch_SPL_EW")
+        self.loss = FLCENonBatch_SPL({'gamma':2}, {'gamma':0}, max_num_epochs=self.max_num_epochs, epoch_for_weighting=self.max_num_epochs)
+        self.save_latest_only = False
+
+class nnUNet_302WG_FLCELossNonBatch_SPL_HardFirst_EW_500(nnUNetTrainerV2_zonal):
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
+                                              unpack_data, deterministic, fp16)
+        self.max_num_epochs = 500
         print("Setting up self.loss = FLCELossNonBatch_SPL_EW")
         self.loss = FLCENonBatch_SPL({'gamma':2}, {'gamma':0}, max_num_epochs=self.max_num_epochs, epoch_for_weighting=self.max_num_epochs)
         self.save_latest_only = False
