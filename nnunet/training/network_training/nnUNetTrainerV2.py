@@ -310,7 +310,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
                     # compute p=2 energy: squared gradients summed
                     energy = np.sum(data_grad_numpy_in_gland ** 2)
                     # size-normalised mean energy
-                    norm = energy / (np.sum(prostate_mask) + 1e-8)
+                    norm = energy / (np.sum(prostate_mask.numpy()) + 1e-8)
 
                     print(f"sample {keys[i]}: norm_origin = {norm_origin}, norm_in_gland = {norm_l2}, mean_energy_in_gland = {norm}")
 
