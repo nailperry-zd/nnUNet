@@ -141,7 +141,7 @@ class nnUNetTrainerV2_CELossNonBatch_SPL_HardFirst(nnUNetTrainerV2):
         self.loss = FocalLossNonBatch_SPL({'gamma':0}, reverse=True)
         self.save_latest_only = False
 
-class nnUNetTrainerV2_CELossNonBatch_SPL_HardFirst_500(nnUNetTrainerV2):
+class nnUNetTrainerV2_CELossNonBatch_SPL_LossHardFirst_500(nnUNetTrainerV2):
     def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
                  unpack_data=True, deterministic=True, fp16=False):
         super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
@@ -149,6 +149,16 @@ class nnUNetTrainerV2_CELossNonBatch_SPL_HardFirst_500(nnUNetTrainerV2):
         print("Setting up self.loss = CELossNonBatch_RSSPL")
         self.max_num_epochs = 500
         self.loss = FocalLossNonBatch_SPL({'gamma':0}, max_num_epochs=self.max_num_epochs, reverse=True)
+        self.save_latest_only = False
+
+class nnUNetTrainerV2_CELossNonBatch_SPL_LossEasyFirst_500(nnUNetTrainerV2):
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
+                                              unpack_data, deterministic, fp16)
+        print("Setting up self.loss = CELossNonBatch_RSSPL")
+        self.max_num_epochs = 500
+        self.loss = FocalLossNonBatch_SPL({'gamma':0}, max_num_epochs=self.max_num_epochs, reverse=False)
         self.save_latest_only = False
 
 class nnUNetTrainerV2_CELossNonBatch_SPL_EasyFirst(nnUNetTrainerV2):
