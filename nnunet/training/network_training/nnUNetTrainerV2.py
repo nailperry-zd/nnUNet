@@ -52,7 +52,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
         self.ds_loss_weights = None
 
         self.pin_memory = True
-        self.fl = FocalLossNonBatch(apply_nonlin=softmax_helper, **{})
+        self.fl = FocalLossNonBatch(apply_nonlin=softmax_helper, **{'gamma':0})
         self.dice = SoftDice(apply_nonlin=softmax_helper, **{'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
 
     def initialize(self, training=True, force_load_plans=False):
@@ -251,7 +251,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
                 data.requires_grad_()
                 output = self.network(data)
                 #
-                l = self.loss(output, target, current_epoch, do_backprop, keys, self.gradients_map)
+                l = self.loss(output, target, current_epoch, do_backprop, keys, self.focalloss_map)
 
             if do_backprop:
                 self.amp_grad_scaler.scale(l).backward()
@@ -343,7 +343,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
         else:
             output = self.network(data)
             del data
-            l = self.loss(output, target, current_epoch, do_backprop, keys, self.gradients_map)
+            l = self.loss(output, target, current_epoch, do_backprop, keys, self.focalloss_map)
 
             if do_backprop:
                 l.backward()

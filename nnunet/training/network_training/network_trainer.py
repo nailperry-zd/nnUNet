@@ -492,15 +492,15 @@ class NetworkTrainer(object):
             if not continue_training:
                 # allows for early stopping
                 break
-            gradients_str = "\n".join(f"[{filepath}: {gradient}]"
-                                      for filepath, gradient in self.gradients_map.items())
-            self.print_to_log_file(f"After this epoch, gradients are: \n{gradients_str}")
-            gradients_channel_str = "\n".join(f"[{filepath}: {gradient_channel}]"
-                                      for filepath, gradient_channel in self.gradients_map_channels.items())
-            self.print_to_log_file(f"After this epoch, gradients for 3 channles are: \n{gradients_channel_str}")
-            dice_score_str = "\n".join(f"[{filepath}: {dice_score}]"
-                                              for filepath, dice_score in self.dicescore_map.items())
-            self.print_to_log_file(f"After this epoch, dice scores are: \n{dice_score_str}")
+            # gradients_str = "\n".join(f"[{filepath}: {gradient}]"
+            #                           for filepath, gradient in self.gradients_map.items())
+            # self.print_to_log_file(f"After this epoch, gradients are: \n{gradients_str}")
+            # gradients_channel_str = "\n".join(f"[{filepath}: {gradient_channel}]"
+            #                           for filepath, gradient_channel in self.gradients_map_channels.items())
+            # self.print_to_log_file(f"After this epoch, gradients for 3 channles are: \n{gradients_channel_str}")
+            # dice_score_str = "\n".join(f"[{filepath}: {dice_score}]"
+            #                                   for filepath, dice_score in self.dicescore_map.items())
+            # self.print_to_log_file(f"After this epoch, dice scores are: \n{dice_score_str}")
             focal_loss_str = "\n".join(f"[{filepath}: {focal_loss}]"
                                               for filepath, focal_loss in self.focalloss_map.items())
             self.print_to_log_file(f"After this epoch, focal losses are: \n{focal_loss_str}")

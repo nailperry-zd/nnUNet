@@ -61,7 +61,7 @@ class FocalLossNonBatch_SPL(nn.Module):
 
     def forward(self, logit, target, current_epoch, do_backprop, keys, gradients_map):
         result_fl = self.fl(logit, target)
-        print(f"FocalLoss is {result_fl}, device={result_fl.device}")
+        print(f"reverse={self.reverse}, FocalLoss is {result_fl}, device={result_fl.device}")
         if do_backprop and current_epoch > self.epoch_for_weighting:
             spl = SymmetricSelfPacedLearning(current_epoch, gradients_map, self.max_num_epochs, self.max_weight, self.reverse)
             weighted_loss = spl(result_fl, keys)
@@ -139,6 +139,16 @@ class nnUNetTrainerV2_CELossNonBatch_SPL_HardFirst(nnUNetTrainerV2):
                                               unpack_data, deterministic, fp16)
         print("Setting up self.loss = CELossNonBatch_RSSPL")
         self.loss = FocalLossNonBatch_SPL({'gamma':0}, reverse=True)
+        self.save_latest_only = False
+
+class nnUNetTrainerV2_CELossNonBatch_SPL_HardFirst_500(nnUNetTrainerV2):
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
+                                              unpack_data, deterministic, fp16)
+        print("Setting up self.loss = CELossNonBatch_RSSPL")
+        self.max_num_epochs = 500
+        self.loss = FocalLossNonBatch_SPL({'gamma':0}, max_num_epochs=self.max_num_epochs, reverse=True)
         self.save_latest_only = False
 
 class nnUNetTrainerV2_CELossNonBatch_SPL_EasyFirst(nnUNetTrainerV2):
