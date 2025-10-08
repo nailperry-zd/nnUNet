@@ -84,7 +84,7 @@ class FocalLossNonBatch_SPL(nn.Module):
 
 class FLCENonBatch_SPL(nn.Module):
 
-    def __init__(self, fl_kwargs, ce_kwargs, epoch_for_weighting=0, max_num_epochs=1000, max_weight=2, reverse=True):
+    def __init__(self, fl_kwargs, ce_kwargs, w_fl=0, w_ce=0.5, epoch_for_weighting=0, max_num_epochs=1000, max_weight=2, reverse=True):
         super().__init__()
         self.fl = FocalLossNonBatch(apply_nonlin=softmax_helper, **fl_kwargs)
         self.ce = FocalLossNonBatch(apply_nonlin=softmax_helper, **ce_kwargs)
@@ -92,11 +92,13 @@ class FLCENonBatch_SPL(nn.Module):
         self.max_num_epochs = max_num_epochs
         self.max_weight = max_weight
         self.reverse = reverse
+        self.w_fl = w_fl
+        self.w_ce = w_ce
 
     def forward(self, logit, target, current_epoch, do_backprop, keys, gradients_map):
         result_fl = self.fl(logit, target)
         result_ce = self.ce(logit, target)
-        ls = 0.5 * result_fl + 0.5 * result_ce
+        ls = self.w_fl * result_fl + self.w_ce * result_ce
         if do_backprop and current_epoch > self.epoch_for_weighting:
             spl = SymmetricSelfPacedLearning(current_epoch, gradients_map, self.max_num_epochs, self.max_weight, self.reverse)
             weighted_loss = spl(ls, keys)
