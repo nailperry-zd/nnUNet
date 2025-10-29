@@ -91,7 +91,7 @@ class FLCENonBatch_SPL(nn.Module):
         self.max_num_epochs = max_num_epochs
         self.max_weight = max_weight
 
-    def forward(self, logit, target, current_epoch, do_backprop, keys, gradients_map):
+    def forward(self, logit, target, current_epoch, do_backprop, keys, gradients_map, losses_map):
         result_fl = self.fl(logit, target)
         result_ce = self.ce(logit, target)
         ls = 0.5 * result_fl + 0.5 * result_ce
@@ -99,9 +99,13 @@ class FLCENonBatch_SPL(nn.Module):
             spl = SymmetricSelfPacedLearning(current_epoch, gradients_map, self.max_num_epochs, self.max_weight)
             weighted_loss = spl(ls, keys)
             print(f"dynamically weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
+            for i, key in enumerate(keys):
+                losses_map[key] = weighted_loss[i].item()
             return weighted_loss.mean()
         else:
             print(f"equally weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
+            for i, key in enumerate(keys):
+                losses_map[key] = ls[i].item()
             return ls.mean()
 
 class nnUNetTrainerV2_FocalLossNonBatch_SPL_HardFirst(nnUNetTrainerV2):

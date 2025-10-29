@@ -125,6 +125,7 @@ class NetworkTrainer(object):
         self.save_intermediate_checkpoints = True  # whether or not to save checkpoint_latest
         self.save_best_checkpoint = True  # whether or not to save the best checkpoint according to self.best_val_eval_criterion_MA
         self.save_final_checkpoint = True  # whether or not to save the final checkpoint
+        self.losses_map = {}
         self.gradients_map = {}
         self.gradients_map_channels = {}
 
@@ -490,6 +491,9 @@ class NetworkTrainer(object):
             if not continue_training:
                 # allows for early stopping
                 break
+            losses_str = "\n".join(f"[{filepath}: {loss}]"
+                                      for filepath, loss in self.losses_map.items())
+            self.print_to_log_file(f"After this epoch, losses are: \n{losses_str}")
             gradients_str = "\n".join(f"[{filepath}: {gradient}]"
                                       for filepath, gradient in self.gradients_map.items())
             self.print_to_log_file(f"After this epoch, gradients are: \n{gradients_str}")

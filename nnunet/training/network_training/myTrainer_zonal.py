@@ -305,7 +305,7 @@ class myTrainer_zonal(nnUNetTrainer):
                 data.requires_grad_()
                 output = self.network(data)
                 # del data
-                l = self.loss(output, target, current_epoch, do_backprop, keys, self.gradients_map)
+                l = self.loss(output, target, current_epoch, do_backprop, keys, self.gradients_map, self.losses_map)
 
             if do_backprop:
                 self.amp_grad_scaler.scale(l).backward()
@@ -582,6 +582,16 @@ class ZSSMNet_FLCELossNonBatch_SPL_HardFirst_MW4(myTrainer_zonal):
         print("Setting up self.loss = FLCELossNonBatch_SPL_MW4")
         self.loss = FLCENonBatch_SPL({'gamma':2}, {'gamma':0}, max_num_epochs=self.max_num_epochs, max_weight=4)
         self.save_latest_only = False
+
+class ZSSMNet_FLCELossNonBatch_SPL_HardFirst_MW4_500(myTrainer_zonal):
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
+                                              unpack_data, deterministic, fp16)
+        self.max_num_epochs = 500
+        print("Setting up self.loss = FLCELossNonBatch_SPL_MW4")
+        self.loss = FLCENonBatch_SPL({'gamma':2}, {'gamma':0}, max_num_epochs=self.max_num_epochs, max_weight=4)
+        # self.save_latest_only = False
 
 class ZSSMNet_FLCELossNonBatch_SPL_HardFirst_EW(myTrainer_zonal):
     def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,

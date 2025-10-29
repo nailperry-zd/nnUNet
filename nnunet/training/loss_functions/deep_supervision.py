@@ -28,7 +28,7 @@ class MultipleOutputLoss2(nn.Module):
         self.weight_factors = weight_factors
         self.loss = loss
 
-    def forward(self, x, y, current_epoch, do_backprop, keys, gradients_map):
+    def forward(self, x, y, current_epoch, do_backprop, keys, gradients_map, losses_map):
         assert isinstance(x, (tuple, list)), "x must be either tuple or list"
         assert isinstance(y, (tuple, list)), "y must be either tuple or list"
         if self.weight_factors is None:
@@ -36,8 +36,8 @@ class MultipleOutputLoss2(nn.Module):
         else:
             weights = self.weight_factors
 
-        l = weights[0] * self.loss(x[0], y[0], current_epoch, do_backprop, keys, gradients_map)
+        l = weights[0] * self.loss(x[0], y[0], current_epoch, do_backprop, keys, gradients_map, losses_map)
         for i in range(1, len(x)):
             if weights[i] != 0:
-                l += weights[i] * self.loss(x[i], y[i], current_epoch, do_backprop, keys, gradients_map)
+                l += weights[i] * self.loss(x[i], y[i], current_epoch, do_backprop, keys, gradients_map, losses_map)
         return l
