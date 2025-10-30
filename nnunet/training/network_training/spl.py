@@ -84,7 +84,7 @@ class FocalLossNonBatch_SPL(nn.Module):
 
 class FLCENonBatch_SPL(nn.Module):
 
-    def __init__(self, fl_kwargs, ce_kwargs, w_fl=0, w_ce=0.5, epoch_for_weighting=0, max_num_epochs=1000, max_weight=2, reverse=True):
+    def __init__(self, fl_kwargs, ce_kwargs, w_fl=0.5, w_ce=0.5, epoch_for_weighting=0, max_num_epochs=1000, max_weight=2, reverse=True):
         super().__init__()
         self.fl = FocalLossNonBatch(apply_nonlin=softmax_helper, **fl_kwargs)
         self.ce = FocalLossNonBatch(apply_nonlin=softmax_helper, **ce_kwargs)
