@@ -57,22 +57,21 @@ class MultiEnSharedDeConvUNet(nn.Module):
                                         nonlin_first=nonlin_first)
         self.decoder = SharedUNetDecoder(self.encoder, num_classes, n_conv_per_stage_decoder, deep_supervision,
                                    nonlin_first=nonlin_first)
-        # self.raw_weights = nn.Parameter(torch.zeros(NUM_MODAL))
+        self.raw_weights = nn.Parameter(torch.zeros(NUM_MODAL))
 
     def forward(self, x):
         skips_arr = self.encoder(x)
         # put weights here
-        # weights = F.softmax(self.raw_weights, dim=0)
+        weights = F.softmax(self.raw_weights, dim=0)
 
         # scale each modality’s skips
-        # for m in range(len(skips_arr)):
-        #     skips_arr[m] = [weights[m] * s for s in skips_arr[m]]
+        for m in range(len(skips_arr)):
+            skips_arr[m] = [weights[m] * s for s in skips_arr[m]]
 
         # fuse per stage
-        num_modalities = len(skips_arr)
         num_stages = len(skips_arr[0])
         fused_skips = [
-            sum(skips_arr[m][stage] for m in range(num_modalities)) / num_modalities
+            sum(skips_arr[m][stage] for m in range(len(skips_arr)))
             for stage in range(num_stages)
         ]
 
