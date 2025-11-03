@@ -16,8 +16,6 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from nnunet.training.network_training.nnUNetTrainerV2 import nnUNetTrainerV2
-
 
 class FocalLoss(nn.Module):
     """
@@ -104,37 +102,3 @@ class FocalLoss(nn.Module):
             loss = loss.sum()
 
         return loss
-
-
-class nnUNetTrainerV2_focalLossAlpha75(nnUNetTrainerV2):
-    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
-                 unpack_data=True, deterministic=True, fp16=False):
-        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage, unpack_data,
-                         deterministic, fp16)
-        print("Setting up FocalLoss(alpha=[0.75, 0.25], apply_nonlin=nn.Softmax())")
-        self.loss = FocalLoss(alpha=[0.75, 0.25], apply_nonlin=nn.Softmax())
-
-
-class nnUNetTrainerV2_focalLossAlpha75_checkpoints(nnUNetTrainerV2_focalLossAlpha75):
-    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
-                 unpack_data=True, deterministic=True, fp16=False):
-        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage, unpack_data,
-                         deterministic, fp16)
-        print("Saving checkpoint every 50th epoch")
-        self.save_latest_only = False
-
-
-class nnUNetTrainerV2_focalLossAlpha75_checkpoints2(nnUNetTrainerV2_focalLossAlpha75_checkpoints):
-    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
-                 unpack_data=True, deterministic=True, fp16=False):
-        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage, unpack_data,
-                         deterministic, fp16)
-        pass  # this is just to get a new Trainer directory
-
-
-class nnUNetTrainerV2_focalLossAlpha75_checkpoints3(nnUNetTrainerV2_focalLossAlpha75_checkpoints):
-    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
-                 unpack_data=True, deterministic=True, fp16=False):
-        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage, unpack_data,
-                         deterministic, fp16)
-        pass  # this is just to get a new Trainer directory
