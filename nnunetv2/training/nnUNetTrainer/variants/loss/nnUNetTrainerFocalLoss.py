@@ -26,7 +26,7 @@ class nnUNetTrainer_FLCE(nnUNetTrainer):
         return loss
 
 
-class nnUNetTrainer_FLCE_500(nnUNetTrainer_FLCE):
+class nnUNetTrainer_FLCE_GW_500(nnUNetTrainer_FLCE):
     def __init__(
         self,
         plans: dict,
