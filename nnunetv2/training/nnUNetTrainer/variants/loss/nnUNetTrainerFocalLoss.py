@@ -7,7 +7,7 @@ import numpy as np
 from nnunetv2.training.nnUNetTrainer.variants.loss.nnUNetTrainerV2_Loss_FL_and_CE import FL_and_CE_loss
 
 
-class nnUNetTrainerFocalLoss(nnUNetTrainer):
+class nnUNetTrainer_FLCE(nnUNetTrainer):
     def _build_loss(self):
         assert not self.label_manager.has_regions, "regions not supported by this trainer"
         loss = FL_and_CE_loss(alpha=0.5)
@@ -26,7 +26,20 @@ class nnUNetTrainerFocalLoss(nnUNetTrainer):
         return loss
 
 
-class nnUNetTrainerFocalLoss_5epochs(nnUNetTrainerFocalLoss):
+class nnUNetTrainer_FLCE_500(nnUNetTrainer_FLCE):
+    def __init__(
+        self,
+        plans: dict,
+        configuration: str,
+        fold: int,
+        dataset_json: dict,
+        device: torch.device = torch.device("cuda"),
+    ):
+        """used for debugging plans etc"""
+        super().__init__(plans, configuration, fold, dataset_json, device)
+        self.num_epochs = 500
+
+class nnUNetTrainer_FLCE_5(nnUNetTrainer_FLCE):
     def __init__(
         self,
         plans: dict,

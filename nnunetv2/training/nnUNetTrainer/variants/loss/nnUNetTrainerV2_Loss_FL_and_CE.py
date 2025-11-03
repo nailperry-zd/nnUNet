@@ -11,11 +11,9 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
-import torch
 from torch import nn
 
 from nnunetv2.training.loss.robust_ce_loss import RobustCrossEntropyLoss
-from nnunetv2.training.nnUNetTrainer.nnUNetTrainer import nnUNetTrainer
 from nnunetv2.training.nnUNetTrainer.variants.loss.nnUNetTrainerV2_focalLoss import FocalLoss
 
 
@@ -43,16 +41,3 @@ class FL_and_CE_loss(nn.Module):
         else:
             raise NotImplementedError("nah son")
         return result
-
-
-class nnUNetTrainerV2_FLCE_500(nnUNetTrainer):
-    """
-    Set loss to FL + CE and set checkpoints
-    """
-
-    def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict,
-                 device: torch.device = torch.device('cuda')):
-        super().__init__(plans, fold, configuration, fold, dataset_json, device)
-        self.loss = FL_and_CE_loss(alpha=0.5)
-        self.save_latest_only = False
-        self.max_num_epochs = 500
