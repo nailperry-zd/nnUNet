@@ -51,3 +51,4 @@ class nnUNetTrainer_FLCE_5(nnUNetTrainer_FLCE):
         """used for debugging plans etc"""
         super().__init__(plans, configuration, fold, dataset_json, device)
         self.num_epochs = 5
+        self.save_every = 1
