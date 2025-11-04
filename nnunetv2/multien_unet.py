@@ -57,12 +57,14 @@ class MultiEnSharedDeConvUNet(nn.Module):
                                         nonlin_first=nonlin_first)
         self.decoder = SharedUNetDecoder(self.encoder, num_classes, n_conv_per_stage_decoder, deep_supervision,
                                    nonlin_first=nonlin_first)
-        self.raw_weights = nn.Parameter(torch.zeros(NUM_MODAL))
+        # self.raw_weights = nn.Parameter(torch.zeros(NUM_MODAL))
+        self.weights = torch.tensor([0.2, 0.4, 0.4], dtype=torch.float32, device='cuda')
 
     def forward(self, x):
         skips_arr = self.encoder(x)
         # put weights here
-        weights = F.softmax(self.raw_weights, dim=0)
+        # weights = F.softmax(self.raw_weights, dim=0)
+        weights = self.weights
 
         # scale each modality’s skips
         for m in range(len(skips_arr)):
