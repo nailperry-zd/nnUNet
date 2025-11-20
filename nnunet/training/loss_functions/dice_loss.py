@@ -369,7 +369,7 @@ class DC_and_CE_loss(nn.Module):
         else:
             self.dc = SoftDiceLossSquared(apply_nonlin=softmax_helper, **soft_dice_kwargs)
 
-    def forward(self, net_output, target):
+    def forward(self, net_output, target, current_epoch, do_backprop, keys, gradients_map):
         """
         target must be b, c, x, y(, z) with c=1
         :param net_output:
