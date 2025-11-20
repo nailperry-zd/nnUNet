@@ -240,6 +240,14 @@ class nnUNet_302_FLCELossNonBatch_SPL_HardFirst_EW_500(nnUNetTrainerV2):
         self.loss = FLCENonBatch_SPL({'gamma':2}, {'gamma':0}, max_num_epochs=self.max_num_epochs, epoch_for_weighting=self.max_num_epochs)
         self.save_latest_only = False
 
+class nnUNet_302_CEDice_500(nnUNetTrainerV2):
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
+                                              unpack_data, deterministic, fp16)
+        self.max_num_epochs = 500
+        print("Setting up self.loss = default")
+
 if __name__ == "__main__":
     # loss = torch.tensor([0, 0.8, 0.9, 0.1, 0.5, 1])  # loss = 1 - Dice
     # example_difficulty = loss
