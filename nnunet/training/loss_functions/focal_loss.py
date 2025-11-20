@@ -96,7 +96,7 @@ class FocalLossNonBatch(nn.Module):
             logpt = pt.log()
 
             gamma = self.gamma
-            print(f"FocalLossNonBatch gamma={gamma}")
+            # print(f"FocalLossNonBatch gamma={gamma}")
 
             alpha = alpha[idx]
             alpha = torch.squeeze(alpha)
