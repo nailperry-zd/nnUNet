@@ -159,7 +159,7 @@ class nnUNetTrainerV2_CELossNonBatch_SPL_HardFirst_500(nnUNetTrainerV2):
         self.max_num_epochs = 500
         print("Setting up self.loss = CELossNonBatch_RSSPL")
         self.loss = FocalLossNonBatch_SPL({'gamma':0}, reverse=True)
-        self.save_latest_only = False
+        self.save_latest_only = True
 
 class nnUNetTrainerV2_CELossNonBatch_SPL_HardFirst_MW4_500(nnUNetTrainerV2):
     def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
