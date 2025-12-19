@@ -54,6 +54,8 @@ class nnUNetTrainerV2(nnUNetTrainer):
         self.pin_memory = True
         self.fl = FocalLossNonBatch(apply_nonlin=softmax_helper, **{})
         self.dice = SoftDice(apply_nonlin=softmax_helper, **{'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
+        self.lambda_kd = 0.5
+        self.T = 2.0
 
     def initialize(self, training=True, force_load_plans=False):
         """
@@ -259,6 +261,12 @@ class nnUNetTrainerV2(nnUNetTrainer):
         self.network.do_ds = ds
         return ret
 
+    def _kd_loss(self, logits_s, logits_t):
+        # logits_*: [B, C, ...]
+        log_p_s = F.log_softmax(logits_s / self.T, dim=1)
+        p_t = F.softmax(logits_t / self.T, dim=1)
+        return F.kl_div(log_p_s, p_t, reduction="batchmean") * (self.T * self.T)
+
     def run_iteration(self, data_generator, current_epoch, do_backprop=True, run_online_evaluation=False):
         """
         gradient clipping improves training stability
@@ -295,7 +303,11 @@ class nnUNetTrainerV2(nnUNetTrainer):
                 output = self.network(data)
                 #
                 l = self.loss(output, target, current_epoch, do_backprop, keys, self.gradients_map)
+
             # put kd loss here
+            loss_kd = self._kd_loss(output[0], out_teacher[0])
+            print(f"loss_kd = {loss_kd}")
+            l = l + self.lambda_kd * loss_kd
             if do_backprop:
                 self.amp_grad_scaler.scale(l).backward()
                 self.amp_grad_scaler.unscale_(self.optimizer)
