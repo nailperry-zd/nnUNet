@@ -70,7 +70,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
         self.dice = SoftDice(apply_nonlin=softmax_helper, **{'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
         self.lambda_kd = 0.5
         self.T = 2.0
-        self.splits_pkl = r"/hpc/dzha937/picai/workdir/nnUNet_preprocessed/Task452_TZwithHealthy/splits_final.pkl"
+        splits_pkl = r"/hpc/dzha937/picai/workdir/nnUNet_preprocessed/Task452_TZwithHealthy/splits_final.pkl"
         self.tz_case_stems = load_split_train_case_ids(splits_pkl, fold)
         print(f"Loaded {len(self.tz_case_stems)} TZ TRAIN cases for KD")
 
