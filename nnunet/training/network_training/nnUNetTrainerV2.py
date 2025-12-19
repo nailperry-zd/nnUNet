@@ -38,6 +38,17 @@ from nnunet.training.loss_functions.dice_loss import SoftDice
 from nnunet.training.loss_functions.focal_loss import FocalLossNonBatch
 import torch.nn.functional as F
 
+import os
+
+def load_case_stems(folder):
+    stems = set()
+    for f in os.listdir(folder):
+        if f.endswith(".nii.gz"):
+            # remove .nii.gz
+            stems.add(f.replace(".nii.gz", ""))
+    return stems
+
+
 class nnUNetTrainerV2(nnUNetTrainer):
     """
     Info for Fabian: same as internal nnUNetTrainerV2_2
@@ -57,6 +68,12 @@ class nnUNetTrainerV2(nnUNetTrainer):
         self.dice = SoftDice(apply_nonlin=softmax_helper, **{'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
         self.lambda_kd = 0.5
         self.T = 2.0
+        self.tz_case_folder = (
+            r"/hpc/dzha937/picai/workdir/nnUNet_preprocessed/Task452_TZwithHealthy/gt_segmentations"
+        )
+        self.tz_case_stems = load_case_stems(self.tz_case_folder)
+
+        print(f"Loaded {len(self.tz_case_stems)} TZ cases for KD")
 
     def initialize(self, training=True, force_load_plans=False):
         """
@@ -262,11 +279,13 @@ class nnUNetTrainerV2(nnUNetTrainer):
         self.network.do_ds = ds
         return ret
 
-    def _kd_loss(self, logits_s, logits_t):
-        # logits_*: [B, C, ...]
+    def _kd_loss_per_sample(self, logits_s, logits_t, eps=1e-6):
         log_p_s = F.log_softmax(logits_s / self.T, dim=1)
-        p_t = F.softmax(logits_t / self.T, dim=1)
-        return F.kl_div(log_p_s, p_t, reduction="batchmean") * (self.T * self.T)
+        p_t = F.softmax(logits_t / self.T, dim=1).clamp_min(eps)
+        log_p_t = torch.log(p_t)
+
+        kl_map = (p_t * (log_p_t - log_p_s)).sum(dim=1)  # [B, Z, Y, X]
+        return kl_map.mean(dim=(1, 2, 3)) * (self.T * self.T)  # [B]
 
     def run_iteration(self, data_generator, current_epoch, do_backprop=True, run_online_evaluation=False):
         """
@@ -302,8 +321,18 @@ class nnUNetTrainerV2(nnUNetTrainer):
                 l = self.loss(output, target, current_epoch, do_backprop, keys, self.gradients_map)
 
             # put kd loss here
-            loss_kd = self._kd_loss(output[0], out_teacher[0])
-            print(f"loss_kd = {loss_kd}")
+            kd_per_sample = self._kd_loss_per_sample(output[0], out_teacher[0])
+            mask = torch.tensor(
+                [cid in self.tz_case_stems for cid in keys],
+                device=l.device,
+                dtype=torch.bool
+            )
+            if mask.any():
+                kd = kd_per_sample[mask].mean()
+            else:
+                kd = torch.zeros((), device=l.device)
+            print(f"loss_kd = {loss_kd}, loss_seg = {l}")
+            loss = loss_seg + self.lambda_kd * kd
             l = l + self.lambda_kd * loss_kd
             if do_backprop:
                 self.amp_grad_scaler.scale(l).backward()
