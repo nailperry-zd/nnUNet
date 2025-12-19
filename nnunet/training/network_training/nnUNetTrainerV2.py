@@ -36,6 +36,7 @@ from torch import nn
 from torch.cuda.amp import autocast
 from nnunet.training.loss_functions.dice_loss import SoftDice
 from nnunet.training.loss_functions.focal_loss import FocalLossNonBatch
+import torch.nn.functional as F
 
 class nnUNetTrainerV2(nnUNetTrainer):
     """
@@ -293,10 +294,6 @@ class nnUNetTrainerV2(nnUNetTrainer):
         if self.fp16:
             with torch.no_grad():
                 out_teacher = self.net_teacher(data)
-                if isinstance(out_teacher, (list, tuple)):
-                    print(f"out_teacher is a {type(out_teacher)}, length = {len(out_teacher)}")
-                    for i, o in enumerate(out_teacher):
-                        print(f"  element {i}: type={type(o)}, shape={o.shape if hasattr(o, 'shape') else 'no shape'}")
 
             with autocast():
                 data.requires_grad_()
