@@ -328,11 +328,10 @@ class nnUNetTrainerV2(nnUNetTrainer):
                 dtype=torch.bool
             )
             if mask.any():
-                kd = kd_per_sample[mask].mean()
+                loss_kd = kd_per_sample[mask].mean()
             else:
-                kd = torch.zeros((), device=l.device)
+                loss_kd = torch.zeros((), device=l.device)
             print(f"loss_kd = {loss_kd}, loss_seg = {l}")
-            loss = loss_seg + self.lambda_kd * kd
             l = l + self.lambda_kd * loss_kd
             if do_backprop:
                 self.amp_grad_scaler.scale(l).backward()
