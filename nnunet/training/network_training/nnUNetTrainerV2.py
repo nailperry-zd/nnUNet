@@ -40,13 +40,15 @@ import torch.nn.functional as F
 
 import os
 
-def load_case_stems(folder):
-    stems = set()
-    for f in os.listdir(folder):
-        if f.endswith(".nii.gz"):
-            # remove .nii.gz
-            stems.add(f.replace(".nii.gz", ""))
-    return stems
+import pickle
+
+def load_split_train_case_ids(splits_pkl_path, fold: int):
+    with open(splits_pkl_path, "rb") as f:
+        splits = pickle.load(f)
+
+    # nnU-Net split: list of dicts, each has 'train' and 'val'
+    return set(splits[fold]["train"])
+
 
 
 class nnUNetTrainerV2(nnUNetTrainer):
@@ -68,12 +70,9 @@ class nnUNetTrainerV2(nnUNetTrainer):
         self.dice = SoftDice(apply_nonlin=softmax_helper, **{'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
         self.lambda_kd = 0.5
         self.T = 2.0
-        self.tz_case_folder = (
-            r"/hpc/dzha937/picai/workdir/nnUNet_preprocessed/Task452_TZwithHealthy/gt_segmentations"
-        )
-        self.tz_case_stems = load_case_stems(self.tz_case_folder)
-
-        print(f"Loaded {len(self.tz_case_stems)} TZ cases for KD")
+        self.splits_pkl = r"/hpc/dzha937/picai/workdir/nnUNet_preprocessed/Task452_TZwithHealthy/splits_final.pkl"
+        self.tz_case_stems = load_split_train_case_ids(splits_pkl, fold)
+        print(f"Loaded {len(self.tz_case_stems)} TZ TRAIN cases for KD")
 
     def initialize(self, training=True, force_load_plans=False):
         """
@@ -331,7 +330,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
                 loss_kd = kd_per_sample[mask].mean()
             else:
                 loss_kd = torch.zeros((), device=l.device)
-            print(f"loss_kd = {loss_kd}, loss_seg = {l}")
+            print(f"loss_kd = {loss_kd}, loss_seg = {l}, mask={mask}")
             l = l + self.lambda_kd * loss_kd
             if do_backprop:
                 self.amp_grad_scaler.scale(l).backward()
