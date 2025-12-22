@@ -68,7 +68,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
         self.pin_memory = True
         self.fl = FocalLossNonBatch(apply_nonlin=softmax_helper, **{})
         self.dice = SoftDice(apply_nonlin=softmax_helper, **{'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
-        self.lambda_kd = 0.1
+        self.lambda_kd = 0.0
         self.T = 2.0
         splits_pkl = r"/hpc/dzha937/picai/workdir/nnUNet_preprocessed/Task452_TZwithHealthy/splits_final.pkl"
         self.tz_case_stems = load_split_train_case_ids(splits_pkl, fold)
