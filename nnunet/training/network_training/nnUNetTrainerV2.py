@@ -68,8 +68,8 @@ class nnUNetTrainerV2(nnUNetTrainer):
         self.pin_memory = True
         self.fl = FocalLossNonBatch(apply_nonlin=softmax_helper, **{})
         self.dice = SoftDice(apply_nonlin=softmax_helper, **{'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
-        self.lambda_kd = 0.0
-        self.T = 2.0
+        self.lambda_kd = 1e-4
+        self.T = 4.0
         splits_pkl = r"/hpc/dzha937/picai/workdir/nnUNet_preprocessed/Task452_TZwithHealthy/splits_final.pkl"
         self.tz_case_stems = load_split_train_case_ids(splits_pkl, fold)
         print(f"Loaded {len(self.tz_case_stems)} TZ TRAIN cases for KD")
@@ -331,7 +331,8 @@ class nnUNetTrainerV2(nnUNetTrainer):
             else:
                 loss_kd = torch.zeros((), device=l.device)
             print(f"loss_kd = {loss_kd}, loss_seg = {l}, mask={mask}")
-            l = l + self.lambda_kd * loss_kd
+            loss_seg = l
+            l = loss_seg + self.lambda_kd * loss_kd
             if do_backprop:
                 self.amp_grad_scaler.scale(l).backward()
                 self.amp_grad_scaler.unscale_(self.optimizer)
@@ -434,7 +435,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
 
         del target
 
-        return l.detach().cpu().numpy()
+        return loss_seg.detach().cpu().numpy()
 
     def do_split(self):
         """
