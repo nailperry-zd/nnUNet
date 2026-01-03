@@ -96,6 +96,43 @@ class FLCENonBatch_SPL(nn.Module):
             print(f"equally weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
             return ls.mean()
 
+class FLCENonBatch_TZ_HigherW(nn.Module):
+
+    def __init__(self, fl_kwargs, ce_kwargs, epoch_for_weighting=0, max_num_epochs=1000, max_weight=2, reverse=False):
+        super().__init__()
+        self.fl = FocalLossNonBatch(apply_nonlin=softmax_helper, **fl_kwargs)
+        self.ce = FocalLossNonBatch(apply_nonlin=softmax_helper, **ce_kwargs)
+        self.epoch_for_weighting = epoch_for_weighting
+        self.max_num_epochs = max_num_epochs
+        self.max_weight = max_weight
+        self.reverse = reverse
+        gt_dir = r"/eresearch/ai-multiparametric-mri-pc/dzha937/Archive/dzha937/picai/workdir/nnUNet_preprocessed/Task128_TZOnly/gt_segmentations"
+        self.tz_case_stems = {
+            fname.replace(".nii.gz", "")
+            for fname in os.listdir(gt_dir)
+            if fname.endswith(".nii.gz")
+        }
+
+    def forward(self, logit, target, current_epoch, do_backprop, keys, gradients_map):
+        result_fl = self.fl(logit, target)
+        result_ce = self.ce(logit, target)
+        ls = 0.5 * result_fl + 0.5 * result_ce
+        if do_backprop and current_epoch > self.epoch_for_weighting:
+            spl = SymmetricSelfPacedLearning(current_epoch, gradients_map, self.max_num_epochs, self.max_weight, self.reverse)
+            weighted_loss = spl(ls, keys)
+            print(f"dynamically weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
+            return weighted_loss.mean()
+        else:
+            print(f"TZ higher weighted, do_backprop={do_backprop}, current_epoch={current_epoch}")
+            weight_matrix = torch.ones(len(keys))
+            for i, key in enumerate(keys):
+                if key in self.tz_case_stems:
+                    weight_matrix[i] = 1.5
+            print(f"weight_matrix={weight_matrix}, keys={keys}")
+            weight_matrix = weight_matrix.to(loss.device).detach()
+            loss = loss * weight_matrix
+            return loss
+
 class nnUNetTrainerV2_FocalLossNonBatch_SPL_EasyFirst(nnUNetTrainerV2):
     def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
                  unpack_data=True, deterministic=True, fp16=False):
@@ -238,6 +275,16 @@ class nnUNet_302_FLCELossNonBatch_SPL_HardFirst_EW_500(nnUNetTrainerV2):
         self.max_num_epochs = 500
         print("Setting up self.loss = FLCELossNonBatch_SPL_EW")
         self.loss = FLCENonBatch_SPL({'gamma':2}, {'gamma':0}, max_num_epochs=self.max_num_epochs, epoch_for_weighting=self.max_num_epochs)
+        self.save_latest_only = False
+
+class nnUNet_302_FLCELossNonBatch_TZ_HigherW_500(nnUNetTrainerV2):
+    def __init__(self, plans_file, fold, output_folder=None, dataset_directory=None, batch_dice=True, stage=None,
+                 unpack_data=True, deterministic=True, fp16=False):
+        super().__init__(plans_file, fold, output_folder, dataset_directory, batch_dice, stage,
+                                              unpack_data, deterministic, fp16)
+        self.max_num_epochs = 500
+        print("Setting up self.loss = FLCELossNonBatch_TZ_HigherW")
+        self.loss = FLCENonBatch_TZ_HigherW({'gamma':2}, {'gamma':0}, max_num_epochs=self.max_num_epochs, epoch_for_weighting=self.max_num_epochs)
         self.save_latest_only = False
 
 class nnUNet_302_CEDice_500(nnUNetTrainerV2):

@@ -36,20 +36,6 @@ from torch import nn
 from torch.cuda.amp import autocast
 from nnunet.training.loss_functions.dice_loss import SoftDice
 from nnunet.training.loss_functions.focal_loss import FocalLossNonBatch
-import torch.nn.functional as F
-
-import os
-
-import pickle
-
-def load_split_train_case_ids(splits_pkl_path, fold: int):
-    with open(splits_pkl_path, "rb") as f:
-        splits = pickle.load(f)
-
-    # nnU-Net split: list of dicts, each has 'train' and 'val'
-    return set(splits[fold]["train"])
-
-
 
 class nnUNetTrainerV2(nnUNetTrainer):
     """
@@ -68,11 +54,6 @@ class nnUNetTrainerV2(nnUNetTrainer):
         self.pin_memory = True
         self.fl = FocalLossNonBatch(apply_nonlin=softmax_helper, **{})
         self.dice = SoftDice(apply_nonlin=softmax_helper, **{'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
-        self.lambda_kd = 1e-4
-        self.T = 4.0
-        splits_pkl = r"/hpc/dzha937/picai/workdir/nnUNet_preprocessed/Task452_TZwithHealthy/splits_final.pkl"
-        self.tz_case_stems = load_split_train_case_ids(splits_pkl, fold)
-        print(f"Loaded {len(self.tz_case_stems)} TZ TRAIN cases for KD")
 
     def initialize(self, training=True, force_load_plans=False):
         """
@@ -141,7 +122,6 @@ class nnUNetTrainerV2(nnUNetTrainer):
                 pass
 
             self.initialize_network()
-            self.initialize_net_teacher()
             self.initialize_optimizer_and_scheduler()
 
             assert isinstance(self.network, (SegmentationNetwork, nn.DataParallel))
@@ -183,41 +163,6 @@ class nnUNetTrainerV2(nnUNetTrainer):
         if torch.cuda.is_available():
             self.network.cuda()
         self.network.inference_apply_nonlin = softmax_helper
-
-    def initialize_net_teacher(self):
-        """
-        - momentum 0.99
-        - SGD instead of Adam
-        - self.lr_scheduler = None because we do poly_lr
-        - deep supervision = True
-        - i am sure I forgot something here
-
-        Known issue: forgot to set neg_slope=0 in InitWeights_He; should not make a difference though
-        :return:
-        """
-        if self.threeD:
-            conv_op = nn.Conv3d
-            dropout_op = nn.Dropout3d
-            norm_op = nn.InstanceNorm3d
-
-        else:
-            conv_op = nn.Conv2d
-            dropout_op = nn.Dropout2d
-            norm_op = nn.InstanceNorm2d
-
-        norm_op_kwargs = {'eps': 1e-5, 'affine': True}
-        dropout_op_kwargs = {'p': 0, 'inplace': True}
-        net_nonlin = nn.LeakyReLU
-        net_nonlin_kwargs = {'negative_slope': 1e-2, 'inplace': True}
-        self.net_teacher = Generic_UNet(self.num_input_channels, self.base_num_features, self.num_classes,
-                                    len(self.net_num_pool_op_kernel_sizes),
-                                    self.conv_per_stage, 2, conv_op, norm_op, norm_op_kwargs, dropout_op,
-                                    dropout_op_kwargs,
-                                    net_nonlin, net_nonlin_kwargs, True, False, lambda x: x, InitWeights_He(1e-2),
-                                    self.net_num_pool_op_kernel_sizes, self.net_conv_kernel_sizes, False, True, True)
-        if torch.cuda.is_available():
-            self.net_teacher.cuda()
-        self.net_teacher.inference_apply_nonlin = softmax_helper
 
     def initialize_optimizer_and_scheduler(self):
         assert self.network is not None, "self.initialize_network must be called first"
@@ -278,14 +223,6 @@ class nnUNetTrainerV2(nnUNetTrainer):
         self.network.do_ds = ds
         return ret
 
-    def _kd_loss_per_sample(self, logits_s, logits_t, eps=1e-6):
-        log_p_s = F.log_softmax(logits_s / self.T, dim=1)
-        p_t = F.softmax(logits_t / self.T, dim=1).clamp_min(eps)
-        log_p_t = torch.log(p_t)
-
-        kl_map = (p_t * (log_p_t - log_p_s)).sum(dim=1)  # [B, Z, Y, X]
-        return kl_map.mean(dim=(1, 2, 3)) * (self.T * self.T)  # [B]
-
     def run_iteration(self, data_generator, current_epoch, do_backprop=True, run_online_evaluation=False):
         """
         gradient clipping improves training stability
@@ -310,29 +247,12 @@ class nnUNetTrainerV2(nnUNetTrainer):
         self.optimizer.zero_grad()
 
         if self.fp16:
-            with torch.no_grad():
-                out_teacher = self.net_teacher(data)
-
             with autocast():
                 data.requires_grad_()
                 output = self.network(data)
                 #
                 l = self.loss(output, target, current_epoch, do_backprop, keys, self.gradients_map)
 
-            # put kd loss here
-            kd_per_sample = self._kd_loss_per_sample(output[0], out_teacher[0])
-            mask = torch.tensor(
-                [cid in self.tz_case_stems for cid in keys],
-                device=l.device,
-                dtype=torch.bool
-            )
-            if mask.any():
-                loss_kd = kd_per_sample[mask].mean()
-            else:
-                loss_kd = torch.zeros((), device=l.device)
-            print(f"loss_kd = {loss_kd}, loss_seg = {l}, mask={mask}")
-            loss_seg = l
-            l = loss_seg + self.lambda_kd * loss_kd
             if do_backprop:
                 self.amp_grad_scaler.scale(l).backward()
                 self.amp_grad_scaler.unscale_(self.optimizer)
@@ -435,7 +355,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
 
         del target
 
-        return loss_seg.detach().cpu().numpy()
+        return l.detach().cpu().numpy()
 
     def do_split(self):
         """
