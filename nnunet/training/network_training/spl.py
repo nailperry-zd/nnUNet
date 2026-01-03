@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from nnunet.training.loss_functions.dice_loss import SoftDice
 from nnunet.training.loss_functions.focal_loss import FocalLossNonBatch
 from nnunet.training.network_training.nnUNetTrainerV2 import nnUNetTrainerV2
+import os
 
 softmax_helper = lambda x: F.softmax(x, 1)
 
@@ -127,10 +128,10 @@ class FLCENonBatch_TZ_HigherW(nn.Module):
             weight_matrix = torch.ones(len(keys))
             for i, key in enumerate(keys):
                 if key in self.tz_case_stems:
-                    weight_matrix[i] = 1.5
+                    weight_matrix[i] = 2
             print(f"weight_matrix={weight_matrix}, keys={keys}")
             weight_matrix = weight_matrix.to(loss.device).detach()
-            loss = loss * weight_matrix
+            loss = (loss * weight_matrix).sum() / weight_matrix.sum().clamp_min(1e-8)
             return loss
 
 class nnUNetTrainerV2_FocalLossNonBatch_SPL_EasyFirst(nnUNetTrainerV2):
