@@ -130,8 +130,8 @@ class FLCENonBatch_TZ_HigherW(nn.Module):
                 if key in self.tz_case_stems:
                     weight_matrix[i] = 2
             print(f"weight_matrix={weight_matrix}, keys={keys}")
-            weight_matrix = weight_matrix.to(loss.device).detach()
-            loss = (loss * weight_matrix).sum() / weight_matrix.sum().clamp_min(1e-8)
+            weight_matrix = weight_matrix.to(ls.device).detach()
+            loss = (ls * weight_matrix).sum() / weight_matrix.sum().clamp_min(1e-8)
             return loss
 
 class nnUNetTrainerV2_FocalLossNonBatch_SPL_EasyFirst(nnUNetTrainerV2):
