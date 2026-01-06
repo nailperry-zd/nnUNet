@@ -68,10 +68,14 @@ class nnUNetTrainerV2(nnUNetTrainer):
         self.pin_memory = True
         self.fl = FocalLossNonBatch(apply_nonlin=softmax_helper, **{})
         self.dice = SoftDice(apply_nonlin=softmax_helper, **{'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
-        self.lambda_kd = 1e-4
+        self.lambda_kd = 1e-3
         self.T = 4.0
-        splits_pkl = r"/hpc/dzha937/picai/workdir/nnUNet_preprocessed/Task452_TZwithHealthy/splits_final.pkl"
-        self.tz_case_stems = load_split_train_case_ids(splits_pkl, fold)
+        gt_dir = r"/eresearch/ai-multiparametric-mri-pc/dzha937/Archive/dzha937/picai/workdir/nnUNet_preprocessed/Task128_TZOnly/gt_segmentations"
+        self.tz_case_stems = {
+            fname.replace(".nii.gz", "")
+            for fname in os.listdir(gt_dir)
+            if fname.endswith(".nii.gz")
+        }
         print(f"Loaded {len(self.tz_case_stems)} TZ TRAIN cases for KD")
 
     def initialize(self, training=True, force_load_plans=False):
