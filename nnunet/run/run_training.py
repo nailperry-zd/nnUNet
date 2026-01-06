@@ -174,7 +174,9 @@ def main():
                 trainer.load_latest_checkpoint()
             elif (not args.continue_training) and (args.pretrained_weights is not None):
                 # we start a new training. If pretrained_weights are set, use them
-                load_pretrained_weights(trainer.network, args.pretrained_weights)
+                # load_pretrained_weights(trainer.network, args.pretrained_weights)
+                load_pretrained_weights(trainer.net_teacher, args.pretrained_weights)
+                trainer.net_teacher.eval()
             else:
                 # new training without pretraine weights, do nothing
                 pass
