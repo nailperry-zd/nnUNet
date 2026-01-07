@@ -77,6 +77,13 @@ class nnUNetTrainerV2(nnUNetTrainer):
             if fname.endswith(".nii.gz")
         }
         print(f"Loaded {len(self.tz_case_stems)} TZ TRAIN cases for KD")
+        gt_dir2 = r"/eresearch/ai-multiparametric-mri-pc/dzha937/Archive/dzha937/picai/workdir/nnUNet_preprocessed/Task154_PZOnly/gt_segmentations"
+        self.pz_case_stems = {
+            fname.replace(".nii.gz", "")
+            for fname in os.listdir(gt_dir)
+            if fname.endswith(".nii.gz")
+        }
+        print(f"Loaded {len(self.pz_case_stems)} PZ TRAIN cases for KD")
 
     def initialize(self, training=True, force_load_plans=False):
         """
@@ -219,9 +226,17 @@ class nnUNetTrainerV2(nnUNetTrainer):
                                     dropout_op_kwargs,
                                     net_nonlin, net_nonlin_kwargs, True, False, lambda x: x, InitWeights_He(1e-2),
                                     self.net_num_pool_op_kernel_sizes, self.net_conv_kernel_sizes, False, True, True)
+        self.net_teacher2 = Generic_UNet(self.num_input_channels, self.base_num_features, self.num_classes,
+                                    len(self.net_num_pool_op_kernel_sizes),
+                                    self.conv_per_stage, 2, conv_op, norm_op, norm_op_kwargs, dropout_op,
+                                    dropout_op_kwargs,
+                                    net_nonlin, net_nonlin_kwargs, True, False, lambda x: x, InitWeights_He(1e-2),
+                                    self.net_num_pool_op_kernel_sizes, self.net_conv_kernel_sizes, False, True, True)
         if torch.cuda.is_available():
             self.net_teacher.cuda()
+            self.net_teacher2.cuda()
         self.net_teacher.inference_apply_nonlin = softmax_helper
+        self.net_teacher2.inference_apply_nonlin = softmax_helper
 
     def initialize_optimizer_and_scheduler(self):
         assert self.network is not None, "self.initialize_network must be called first"
@@ -316,6 +331,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
         if self.fp16:
             with torch.no_grad():
                 out_teacher = self.net_teacher(data)
+                out_teacher2 = self.net_teacher2(data)
 
             with autocast():
                 data.requires_grad_()
@@ -334,9 +350,21 @@ class nnUNetTrainerV2(nnUNetTrainer):
                 loss_kd = kd_per_sample[mask].mean()
             else:
                 loss_kd = torch.zeros((), device=l.device)
-            print(f"loss_kd = {loss_kd}, loss_seg = {l}, mask={mask}")
+
+            # put kd loss here
+            kd_per_sample2 = self._kd_loss_per_sample(output[0], out_teacher2[0])
+            mask2 = torch.tensor(
+                [cid in self.pz_case_stems for cid in keys],
+                device=l.device,
+                dtype=torch.bool
+            )
+            if mask2.any():
+                loss_kd2 = kd_per_sample2[mask2].mean()
+            else:
+                loss_kd2 = torch.zeros((), device=l.device)
+            print(f"loss_kdT = {loss_kd}, loss_kdP = {loss_kd2}, loss_seg = {l}, mask_T={mask}, mask_P={mask2}")
             loss_seg = l
-            l = loss_seg + self.lambda_kd * loss_kd
+            l = loss_seg + self.lambda_kd * loss_kd + self.lambda_kd * loss_kd2
             if do_backprop:
                 self.amp_grad_scaler.scale(l).backward()
                 self.amp_grad_scaler.unscale_(self.optimizer)
