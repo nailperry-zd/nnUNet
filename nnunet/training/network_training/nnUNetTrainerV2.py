@@ -80,7 +80,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
         gt_dir2 = r"/eresearch/ai-multiparametric-mri-pc/dzha937/Archive/dzha937/picai/workdir/nnUNet_preprocessed/Task154_PZOnly/gt_segmentations"
         self.pz_case_stems = {
             fname.replace(".nii.gz", "")
-            for fname in os.listdir(gt_dir)
+            for fname in os.listdir(gt_dir2)
             if fname.endswith(".nii.gz")
         }
         print(f"Loaded {len(self.pz_case_stems)} PZ TRAIN cases for KD")
