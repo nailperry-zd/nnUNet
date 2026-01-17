@@ -331,7 +331,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
         if self.fp16:
             with torch.no_grad():
                 out_teacher = self.net_teacher(data)
-                out_teacher2 = self.net_teacher2(data)
+                # out_teacher2 = self.net_teacher2(data)
 
             with autocast():
                 data.requires_grad_()
@@ -352,19 +352,20 @@ class nnUNetTrainerV2(nnUNetTrainer):
                 loss_kd = torch.zeros((), device=l.device)
 
             # put kd loss here
-            kd_per_sample2 = self._kd_loss_per_sample(output[0], out_teacher2[0])
-            mask2 = torch.tensor(
-                [cid in self.pz_case_stems for cid in keys],
-                device=l.device,
-                dtype=torch.bool
-            )
-            if mask2.any():
-                loss_kd2 = kd_per_sample2[mask2].mean()
-            else:
-                loss_kd2 = torch.zeros((), device=l.device)
-            print(f"loss_kdT = {loss_kd}, loss_kdP = {loss_kd2}, loss_seg = {l}, mask_T={mask}, mask_P={mask2}")
+            # kd_per_sample2 = self._kd_loss_per_sample(output[0], out_teacher2[0])
+            # mask2 = torch.tensor(
+            #     [cid in self.pz_case_stems for cid in keys],
+            #     device=l.device,
+            #     dtype=torch.bool
+            # )
+            # if mask2.any():
+            #     loss_kd2 = kd_per_sample2[mask2].mean()
+            # else:
+            #     loss_kd2 = torch.zeros((), device=l.device)
+            print(f"loss_kdT = {loss_kd}, loss_seg = {l}, mask_T={mask}")
             loss_seg = l
-            l = loss_seg + self.lambda_kd * loss_kd + self.lambda_kd * loss_kd2
+            # l = loss_seg + self.lambda_kd * loss_kd + self.lambda_kd * loss_kd2
+            l = loss_seg + self.lambda_kd * loss_kd
             if do_backprop:
                 self.amp_grad_scaler.scale(l).backward()
                 self.amp_grad_scaler.unscale_(self.optimizer)
