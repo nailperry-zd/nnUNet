@@ -589,11 +589,27 @@ class nnUNetTrainer(NetworkTrainer):
             if overwrite or (not isfile(join(output_folder, fname + ".nii.gz"))) or \
                     (save_softmax and not isfile(join(output_folder, fname + ".npz"))):
                 data = np.load(self.dataset[k]['data_file'])['data']
+                data_noisy = data.copy()
 
-                print(k, data.shape)
-                data[-1][data[-1] == -1] = 0
+                mod = data[0]
+                mask = mod != 0
 
-                softmax_pred = self.predict_preprocessed_data_return_seg_and_softmax(data[:-1],
+                sigma = mod[mask].std()
+
+                noise = np.random.normal(
+                    loc=0.0,
+                    scale=sigma,
+                    size=mod.shape
+                )
+
+                mod_noisy = mod.copy()
+                mod_noisy[mask] = noise[mask]
+
+                data_noisy[0] = mod_noisy
+                print(k, data_noisy.shape) # prostate158_130 (4, 27, 218, 218)
+                data_noisy[-1][data_noisy[-1] == -1] = 0
+
+                softmax_pred = self.predict_preprocessed_data_return_seg_and_softmax(data_noisy[:-1],
                                                                                      do_mirroring=do_mirroring,
                                                                                      mirror_axes=mirror_axes,
                                                                                      use_sliding_window=use_sliding_window,
