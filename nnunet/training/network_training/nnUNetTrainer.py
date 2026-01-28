@@ -591,7 +591,8 @@ class nnUNetTrainer(NetworkTrainer):
                 data = np.load(self.dataset[k]['data_file'])['data']
                 data_noisy = data.copy()
 
-                mod = data[0]
+                index = 1 # ADC
+                mod = data[index]
                 mask = mod != 0
 
                 sigma = mod[mask].std()
@@ -605,7 +606,7 @@ class nnUNetTrainer(NetworkTrainer):
                 mod_noisy = mod.copy()
                 mod_noisy[mask] = noise[mask]
 
-                data_noisy[0] = mod_noisy
+                data_noisy[index] = mod_noisy
                 print(k, data_noisy.shape) # prostate158_130 (4, 27, 218, 218)
                 data_noisy[-1][data_noisy[-1] == -1] = 0
 
