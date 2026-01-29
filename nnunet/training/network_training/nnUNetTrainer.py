@@ -591,7 +591,7 @@ class nnUNetTrainer(NetworkTrainer):
                 data = np.load(self.dataset[k]['data_file'])['data']
                 data_noisy = data.copy()
 
-                index = 2 # Highb
+                index = 1 # adc
                 mod = data[index]
                 mask = mod != 0
 
