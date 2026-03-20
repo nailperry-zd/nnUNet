@@ -262,7 +262,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
                 # 2. Classification Loss (Fast boost weight = 1.0)
                 loss_cls = nn.BCEWithLogitsLoss()(output_cls, target_cls.float())
                 print(f"seg loss={loss_seg}, classification loss = {loss_cls}")
-                l = loss_seg + loss_cls
+                l = loss_seg + 0.01 * loss_cls
 
             if do_backprop:
                 self.amp_grad_scaler.scale(l).backward()
