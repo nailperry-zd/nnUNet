@@ -164,6 +164,48 @@ class Upsample(nn.Module):
                                          align_corners=self.align_corners)
 
 
+import torch
+import torch.nn as nn
+
+
+class SoftTokenConditioner(nn.Module):
+    def __init__(self, in_channels, token_dim, conv_op=nn.Conv3d):
+        super().__init__()
+        self.in_channels = in_channels
+        self.token_dim = token_dim
+
+        # 1x1 Convolution to compress (C + token_dim) back to (C)
+        self.compressor = conv_op(
+            in_channels + token_dim,
+            in_channels,
+            kernel_size=1, stride=1, padding=0, bias=False
+        )
+
+        self.init_weights()
+
+    def init_weights(self):
+        # Identity initialization:
+        # The first 'in_channels' keep the original features,
+        # the 'token_dim' channels start with zero influence.
+        with torch.no_grad():
+            # Shape of weight: [out_c, in_c, 1, 1, 1]
+            weight = torch.zeros_like(self.compressor.weight)
+            for i in range(self.in_channels):
+                weight[i, i, ...] = 1.0
+            self.compressor.weight.copy_(weight)
+
+    def forward(self, x, soft_token_vec):
+        # x: (B, C, D, H, W)
+        # soft_token_vec: (B, token_dim)
+
+        # Spatial Broadcast
+        B, C, D, H, W = x.shape
+        token_map = soft_token_vec.view(B, self.token_dim, 1, 1, 1).expand(-1, -1, D, H, W)
+
+        # Concat and compress
+        combined = torch.cat((x, token_map), dim=1)
+        return self.compressor(combined)
+
 class Generic_UNet(SegmentationNetwork):
     DEFAULT_BATCH_SIZE_3D = 2
     DEFAULT_PATCH_SIZE_3D = (64, 192, 160)
@@ -384,6 +426,19 @@ class Generic_UNet(SegmentationNetwork):
             self.apply(self.weightInitializer)
             # self.apply(print_module_training_status)
 
+        # Configuration for pluggable validation
+        self.use_soft_token = False
+        self.token_dim = 16
+        self.bottleneck_feat = self.conv_blocks_context[-1][-1].output_channels
+
+        # Global Feature Extractor
+        self.avgpool = nn.AdaptiveAvgPool3d(1) if conv_op == nn.Conv3d else nn.AdaptiveAvgPool2d(1)
+        self.token_extractor = nn.Linear(self.bottleneck_feat, self.token_dim)
+        self.classifier_head = nn.Linear(self.bottleneck_feat, 1)
+
+        # Pluggable Conditioner
+        self.conditioner = SoftTokenConditioner(self.bottleneck_feat, self.token_dim, conv_op)
+
     def forward(self, x):
         skips = []
         seg_outputs = []
@@ -395,17 +450,42 @@ class Generic_UNet(SegmentationNetwork):
 
         x = self.conv_blocks_context[-1](x)
 
+        # Extract Global Semantic Token
+        feat_vec = self.avgpool(x).view(x.size(0), -1)
+        cls_logits = self.classifier_head(feat_vec)
+
         for u in range(len(self.tu)):
             x = self.tu[u](x)
+
+            # Pluggable Injection at the first decoder level
+            if u == 0 and self.use_soft_token:
+                token_vec = self.token_extractor(feat_vec)
+                x = self.conditioner(x, token_vec)
+
             x = torch.cat((x, skips[-(u + 1)]), dim=1)
             x = self.conv_blocks_localization[u](x)
             seg_outputs.append(self.final_nonlin(self.seg_outputs[u](x)))
 
         if self._deep_supervision and self.do_ds:
-            return tuple([seg_outputs[-1]] + [i(j) for i, j in
+            # --- SMART RETURN FOR nnU-Net COMPATIBILITY ---
+            if self.training:
+                # Return both for Multi-task Loss calculation
+                return tuple([seg_outputs[-1]] + [i(j) for i, j in
+                                                  zip(list(self.upscale_logits_ops)[::-1], seg_outputs[:-1][::-1])]), cls_logits
+            else:
+                # During Inference, nnU-Net only expects the final segmentation map
+                # seg_outputs[-1] is the highest resolution output
+                return tuple([seg_outputs[-1]] + [i(j) for i, j in
                                               zip(list(self.upscale_logits_ops)[::-1], seg_outputs[:-1][::-1])])
         else:
-            return seg_outputs[-1]
+            # --- SMART RETURN FOR nnU-Net COMPATIBILITY ---
+            if self.training:
+                # Return both for Multi-task Loss calculation
+                return seg_outputs, cls_logits
+            else:
+                # During Inference, nnU-Net only expects the final segmentation map
+                # seg_outputs[-1] is the highest resolution output
+                return seg_outputs[-1]
 
     @staticmethod
     def compute_approx_vram_consumption(patch_size, num_pool_per_axis, base_num_features, max_num_features,
@@ -447,3 +527,60 @@ class Generic_UNet(SegmentationNetwork):
                 tmp += np.prod(map_size, dtype=np.int64) * num_classes
             # print(p, map_size, num_feat, tmp)
         return tmp
+
+
+def debug_forward():
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    # ===== 建模型 =====
+    net = Generic_UNet(
+        input_channels=3,
+        base_num_features=32,
+        num_classes=2,
+        num_pool=4,
+        num_conv_per_stage=2,
+        conv_op=nn.Conv3d,
+        norm_op=nn.InstanceNorm3d,
+        dropout_op=nn.Dropout3d,
+        deep_supervision=False,   # ⚠️ 先关掉
+        convolutional_pooling=False,
+        convolutional_upsampling=False
+    ).to(device)
+
+    net.train()
+
+    # ===== 构造输入 =====
+    x = torch.randn(2, 3, 64, 128, 128).to(device)
+
+    print(">>> input:", x.shape)
+
+    # ===== forward =====
+    seg, cls_logits = net(x)
+    if isinstance(seg, (list, tuple)):
+        print(">>> seg is list, len =", len(seg))
+        print(">>> seg[-1]:", seg[-1].shape)
+        seg = seg[-1]
+    else:
+        print(">>> seg:", seg.shape)
+    print(">>> cls_logits:", cls_logits.shape)
+
+    # ===== 构造假标签 =====
+    seg_target = torch.randint(0, 2, (2, 64, 128, 128), device=device)
+    cls_target = torch.randint(0, 2, (2, 1), device=device).float()
+
+    # ===== loss =====
+    seg_loss = nn.CrossEntropyLoss()(seg, seg_target)
+    cls_loss = nn.BCEWithLogitsLoss()(cls_logits, cls_target)
+
+    loss = seg_loss + 0.1 * cls_loss
+
+    print(">>> loss:", loss.item())
+
+    # ===== backward =====
+    loss.backward()
+
+    print(">>> backward done")
+
+if __name__ == "__main__":
+    debug_forward()

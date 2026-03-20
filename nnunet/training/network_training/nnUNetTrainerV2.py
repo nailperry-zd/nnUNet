@@ -244,14 +244,25 @@ class nnUNetTrainerV2(nnUNetTrainer):
             data = to_cuda(data)
             target = to_cuda(target)
 
+        # --- NEW: Calculate Dynamic Class Ground Truth ---
+        # target[0] is the full-res ground truth mask
+        # We flatten spatial dimensions and find max per batch item
+        batch_max = target[0].view(target[0].size(0), -1).max(dim=1)[0]
+        target_cls = (batch_max > 0).float().view(-1, 1)  # Shape: (B, 1)
+
+
         self.optimizer.zero_grad()
 
         if self.fp16:
             with autocast():
                 data.requires_grad_()
-                output = self.network(data)
+                output, output_cls = self.network(data)
                 #
-                l = self.loss(output, target, current_epoch, do_backprop, keys, self.gradients_map)
+                loss_seg = self.loss(output, target, current_epoch, do_backprop, keys, self.gradients_map)
+                # 2. Classification Loss (Fast boost weight = 1.0)
+                loss_cls = nn.BCEWithLogitsLoss()(output_cls, target_cls.float())
+                print(f"seg loss={loss_seg}, classification loss = {loss_cls}")
+                l = loss_seg + loss_cls
 
             if do_backprop:
                 self.amp_grad_scaler.scale(l).backward()
