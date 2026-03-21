@@ -466,13 +466,22 @@ class Generic_UNet(SegmentationNetwork):
             x = self.conv_blocks_localization[u](x)
             seg_outputs.append(self.final_nonlin(self.seg_outputs[u](x)))
 
+        if self.training == False:
+            if self._deep_supervision and self.do_ds:
+                # Return both for Multi-task Loss calculation
+                return tuple([seg_outputs[-1]] + [i(j) for i, j in
+                                                  zip(list(self.upscale_logits_ops)[::-1], seg_outputs[:-1][::-1])])
+            else:
+                # Return both for Multi-task Loss calculation
+                return seg_outputs[-1]
+
         if self._deep_supervision and self.do_ds:
             # Return both for Multi-task Loss calculation
             return tuple([seg_outputs[-1]] + [i(j) for i, j in
                                                   zip(list(self.upscale_logits_ops)[::-1], seg_outputs[:-1][::-1])]), cls_logits
         else:
             # Return both for Multi-task Loss calculation
-            return seg_outputs, cls_logits
+            return seg_outputs[-1], cls_logits
 
     @staticmethod
     def compute_approx_vram_consumption(patch_size, num_pool_per_axis, base_num_features, max_num_features,
