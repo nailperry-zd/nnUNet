@@ -129,6 +129,7 @@ class NetworkTrainer(object):
         self.gradients_map_channels = {}
         self.dicescore_map = {}
         self.focalloss_map = {}
+        self.cls_map = {}
 
     @abstractmethod
     def initialize(self, training=True):
@@ -498,12 +499,15 @@ class NetworkTrainer(object):
             gradients_channel_str = "\n".join(f"[{filepath}: {gradient_channel}]"
                                       for filepath, gradient_channel in self.gradients_map_channels.items())
             self.print_to_log_file(f"After this epoch, gradients for 3 channles are: \n{gradients_channel_str}")
-            dice_score_str = "\n".join(f"[{filepath}: {dice_score}]"
-                                              for filepath, dice_score in self.dicescore_map.items())
-            self.print_to_log_file(f"After this epoch, dice scores are: \n{dice_score_str}")
-            focal_loss_str = "\n".join(f"[{filepath}: {focal_loss}]"
-                                              for filepath, focal_loss in self.focalloss_map.items())
-            self.print_to_log_file(f"After this epoch, focal losses are: \n{focal_loss_str}")
+            # dice_score_str = "\n".join(f"[{filepath}: {dice_score}]"
+            #                                   for filepath, dice_score in self.dicescore_map.items())
+            # self.print_to_log_file(f"After this epoch, dice scores are: \n{dice_score_str}")
+            # focal_loss_str = "\n".join(f"[{filepath}: {focal_loss}]"
+            #                                   for filepath, focal_loss in self.focalloss_map.items())
+            # self.print_to_log_file(f"After this epoch, focal losses are: \n{focal_loss_str}")
+            cls_str = "\n".join(f"[{filepath}: {cls}]"
+                                              for filepath, cls in self.cls_map.items())
+            self.print_to_log_file(f"After this epoch, classifier head's results are: \n{cls_str}")
             self.epoch += 1
             self.print_to_log_file("This epoch took %f s\n" % (epoch_end_time - epoch_start_time))
 
