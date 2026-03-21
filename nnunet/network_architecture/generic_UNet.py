@@ -206,6 +206,37 @@ class SoftTokenConditioner(nn.Module):
         combined = torch.cat((x, token_map), dim=1)
         return self.compressor(combined)
 
+
+class SoftTokenClassifier(nn.Module):
+    def __init__(self, in_features, hidden_features):
+        super().__init__()
+        self.avgpool = nn.AdaptiveAvgPool3d(1)
+        self.flatten = nn.Flatten()
+
+        # Layer 1: Global feature extraction
+        self.fc1 = nn.Linear(in_features, hidden_features)
+        self.norm = nn.LayerNorm(hidden_features)  # or BatchNorm1d
+        self.act = nn.GELU()
+        self.drop = nn.Dropout(0.2)
+
+        # Layer 2: Final logit for loss
+        self.fc2 = nn.Linear(hidden_features, 1)
+
+    def forward(self, x, return_token=False):
+        # x is from bottleneck: (B, C, D, H, W)
+        x = self.avgpool(x)
+        x = self.flatten(x)
+
+        # Intermediate representation (The "Soft Token" candidate)
+        hidden = self.act(self.norm(self.fc1(x)))
+        hidden = self.drop(hidden)
+
+        logits = self.fc2(hidden)
+
+        if return_token:
+            return logits, hidden  # 'hidden' is your high-quality Soft Token
+        return logits
+
 class Generic_UNet(SegmentationNetwork):
     DEFAULT_BATCH_SIZE_3D = 2
     DEFAULT_PATCH_SIZE_3D = (64, 192, 160)
@@ -431,10 +462,9 @@ class Generic_UNet(SegmentationNetwork):
         self.token_dim = 16
         self.bottleneck_feat = self.conv_blocks_context[-1][-1].output_channels
 
-        # Global Feature Extractor
+        # Global Featutoken_extractorre Extractor
         self.avgpool = nn.AdaptiveAvgPool3d(1) if conv_op == nn.Conv3d else nn.AdaptiveAvgPool2d(1)
-        self.token_extractor = nn.Linear(self.bottleneck_feat, self.token_dim)
-        self.classifier_head = nn.Linear(self.bottleneck_feat, 1)
+        self.classifier_head = SoftTokenClassifier(self.bottleneck_feat, self.token_dim)
 
         # Pluggable Conditioner
         self.conditioner = SoftTokenConditioner(self.bottleneck_feat, self.token_dim, conv_op)
@@ -451,29 +481,27 @@ class Generic_UNet(SegmentationNetwork):
         x = self.conv_blocks_context[-1](x)
 
         # Extract Global Semantic Token
-        feat_vec = self.avgpool(x).view(x.size(0), -1)
-        cls_logits = self.classifier_head(feat_vec)
+        cls_logits, token_vec = self.classifier_head(x.detach(), return_token=True)
 
         for u in range(len(self.tu)):
             x = self.tu[u](x)
 
             # Pluggable Injection at the first decoder level
             if u == 0 and self.use_soft_token:
-                token_vec = self.token_extractor(feat_vec)
                 x = self.conditioner(x, token_vec)
 
             x = torch.cat((x, skips[-(u + 1)]), dim=1)
             x = self.conv_blocks_localization[u](x)
             seg_outputs.append(self.final_nonlin(self.seg_outputs[u](x)))
 
-        if self.training == False:
-            if self._deep_supervision and self.do_ds:
-                # Return both for Multi-task Loss calculation
-                return tuple([seg_outputs[-1]] + [i(j) for i, j in
-                                                  zip(list(self.upscale_logits_ops)[::-1], seg_outputs[:-1][::-1])])
-            else:
-                # Return both for Multi-task Loss calculation
-                return seg_outputs[-1]
+        # if self.training == False:
+        #     if self._deep_supervision and self.do_ds:
+        #         # Return both for Multi-task Loss calculation
+        #         return tuple([seg_outputs[-1]] + [i(j) for i, j in
+        #                                           zip(list(self.upscale_logits_ops)[::-1], seg_outputs[:-1][::-1])])
+        #     else:
+        #         # Return both for Multi-task Loss calculation
+        #         return seg_outputs[-1]
 
         if self._deep_supervision and self.do_ds:
             # Return both for Multi-task Loss calculation
