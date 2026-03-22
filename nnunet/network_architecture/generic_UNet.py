@@ -458,7 +458,7 @@ class Generic_UNet(SegmentationNetwork):
             # self.apply(print_module_training_status)
 
         # Configuration for pluggable validation
-        self.use_soft_token = False
+        self.use_soft_token = True
         self.token_dim = 16
         self.bottleneck_feat = self.conv_blocks_context[-1][-1].output_channels
 
@@ -468,6 +468,8 @@ class Generic_UNet(SegmentationNetwork):
 
         # Pluggable Conditioner
         self.conditioner = SoftTokenConditioner(self.bottleneck_feat, self.token_dim, conv_op)
+        self.null_token = nn.Parameter(torch.zeros(1, self.token_dim))
+        nn.init.normal_(self.null_token, mean=0.0, std=0.02)
 
     def forward(self, x):
         skips = []
@@ -482,7 +484,13 @@ class Generic_UNet(SegmentationNetwork):
 
         # Extract Global Semantic Token
         cls_logits, token_vec = self.classifier_head(x.detach(), return_token=True)
+        probs = torch.sigmoid(cls_logits).view(-1, 1)  # [B,1]
 
+        use_token = ((probs > 0.8) | (probs < 0.2)).float()  # [B,1]
+
+        # soft_token: [B, D]
+        # null_token: [1, D] -> broadcast 成 [B, D]
+        token_vec = use_token * token_vec.detach() + (1 - use_token) * self.null_token
         for u in range(len(self.tu)):
             x = self.tu[u](x)
 
@@ -508,8 +516,8 @@ class Generic_UNet(SegmentationNetwork):
             return tuple([seg_outputs[-1]] + [i(j) for i, j in
                                                   zip(list(self.upscale_logits_ops)[::-1], seg_outputs[:-1][::-1])]), cls_logits
         else:
-            # Return both for Multi-task Loss calculation
-            return seg_outputs[-1], cls_logits
+            # inference will call this branch, return seg map only
+            return seg_outputs[-1]
 
     @staticmethod
     def compute_approx_vram_consumption(patch_size, num_pool_per_axis, base_num_features, max_num_features,
