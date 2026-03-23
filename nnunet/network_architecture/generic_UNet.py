@@ -496,7 +496,7 @@ class Generic_UNet(SegmentationNetwork):
 
             # Pluggable Injection at the first decoder level
             if u == 0 and self.use_soft_token:
-                x = self.conditioner(x, token_vec)
+                x = self.conditioner(x, self.null_token)
 
             x = torch.cat((x, skips[-(u + 1)]), dim=1)
             x = self.conv_blocks_localization[u](x)
