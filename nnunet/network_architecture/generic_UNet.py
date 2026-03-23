@@ -485,8 +485,8 @@ class Generic_UNet(SegmentationNetwork):
         # Extract Global Semantic Token
         cls_logits, token_vec = self.classifier_head(x.detach(), return_token=True)
         probs = torch.sigmoid(cls_logits).view(-1, 1)  # [B,1]
-
-        use_token = ((probs > 0.8) | (probs < 0.2)).float()  # [B,1]
+        use_token = torch.zeros_like(probs)
+        # use_token = ((probs > 0.8) | (probs < 0.2)).float()  # [B,1]
 
         # soft_token: [B, D]
         # null_token: [1, D] -> broadcast 成 [B, D]
@@ -496,7 +496,7 @@ class Generic_UNet(SegmentationNetwork):
 
             # Pluggable Injection at the first decoder level
             if u == 0 and self.use_soft_token:
-                x = self.conditioner(x, self.null_token)
+                x = self.conditioner(x, token_vec)
 
             x = torch.cat((x, skips[-(u + 1)]), dim=1)
             x = self.conv_blocks_localization[u](x)
