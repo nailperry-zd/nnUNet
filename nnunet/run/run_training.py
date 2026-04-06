@@ -92,7 +92,10 @@ def main():
                         help='path to nnU-Net checkpoint file to be used as pretrained model (use .model '
                              'file, for example model_final_checkpoint.model). Will only be used when actually training. '
                              'Optional. Beta. Use with caution.')
-
+    parser.add_argument('-pretrained_weights2', type=str, required=False, default=None,
+                        help='path to nnU-Net checkpoint file to be used as pretrained model (use .model '
+                             'file, for example model_final_checkpoint.model). Will only be used when actually training. '
+                             'Optional. Beta. Use with caution.')
     args = parser.parse_args()
 
     task = args.task
@@ -177,6 +180,7 @@ def main():
                 # load_pretrained_weights(trainer.network, args.pretrained_weights)
                 load_pretrained_weights(trainer.net_teacher, args.pretrained_weights)
                 trainer.net_teacher.eval()
+                load_pretrained_weights(trainer.net_teacher2, args.pretrained_weights2)
                 trainer.net_teacher2.eval()
             else:
                 # new training without pretraine weights, do nothing
