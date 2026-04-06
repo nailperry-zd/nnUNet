@@ -34,8 +34,6 @@ from nnunet.utilities.to_torch import maybe_to_torch, to_cuda
 from sklearn.model_selection import KFold
 from torch import nn
 from torch.cuda.amp import autocast
-from nnunet.training.loss_functions.dice_loss import SoftDice
-from nnunet.training.loss_functions.focal_loss import FocalLossNonBatch
 import torch.nn.functional as F
 
 import os
@@ -66,8 +64,6 @@ class nnUNetTrainerV2(nnUNetTrainer):
         self.ds_loss_weights = None
 
         self.pin_memory = True
-        self.fl = FocalLossNonBatch(apply_nonlin=softmax_helper, **{})
-        self.dice = SoftDice(apply_nonlin=softmax_helper, **{'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
         self.lambda_kd = 1e-3
         self.T = 4.0
         gt_dir = r"/eresearch/ai-multiparametric-mri-pc/dzha937/Archive/dzha937/picai/workdir/nnUNet_preprocessed/Task128_TZOnly/gt_segmentations"
