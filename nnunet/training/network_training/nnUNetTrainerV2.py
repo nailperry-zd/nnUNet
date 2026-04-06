@@ -18,22 +18,37 @@ from typing import Tuple
 
 import numpy as np
 import torch
-from nnunet.training.data_augmentation.data_augmentation_moreDA import get_moreDA_augmentation
-from nnunet.training.loss_functions.deep_supervision import MultipleOutputLoss2
-from nnunet.utilities.to_torch import maybe_to_torch, to_cuda
+from batchgenerators.utilities.file_and_folder_operations import *
 from nnunet.network_architecture.generic_UNet import Generic_UNet
 from nnunet.network_architecture.initialization import InitWeights_He
 from nnunet.network_architecture.neural_network import SegmentationNetwork
+from nnunet.training.data_augmentation.data_augmentation_moreDA import get_moreDA_augmentation
 from nnunet.training.data_augmentation.default_data_augmentation import default_2D_augmentation_params, \
     get_patch_size, default_3D_augmentation_params
 from nnunet.training.dataloading.dataset_loading import unpack_dataset
+from nnunet.training.learning_rate.poly_lr import poly_lr
+from nnunet.training.loss_functions.deep_supervision import MultipleOutputLoss2
 from nnunet.training.network_training.nnUNetTrainer import nnUNetTrainer
 from nnunet.utilities.nd_softmax import softmax_helper
+from nnunet.utilities.to_torch import maybe_to_torch, to_cuda
 from sklearn.model_selection import KFold
 from torch import nn
 from torch.cuda.amp import autocast
-from nnunet.training.learning_rate.poly_lr import poly_lr
-from batchgenerators.utilities.file_and_folder_operations import *
+from nnunet.training.loss_functions.dice_loss import SoftDice
+from nnunet.training.loss_functions.focal_loss import FocalLossNonBatch
+import torch.nn.functional as F
+
+import os
+
+import pickle
+
+def load_split_train_case_ids(splits_pkl_path, fold: int):
+    with open(splits_pkl_path, "rb") as f:
+        splits = pickle.load(f)
+
+    # nnU-Net split: list of dicts, each has 'train' and 'val'
+    return set(splits[fold]["train"])
+
 
 
 class nnUNetTrainerV2(nnUNetTrainer):
@@ -51,6 +66,24 @@ class nnUNetTrainerV2(nnUNetTrainer):
         self.ds_loss_weights = None
 
         self.pin_memory = True
+        self.fl = FocalLossNonBatch(apply_nonlin=softmax_helper, **{})
+        self.dice = SoftDice(apply_nonlin=softmax_helper, **{'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
+        self.lambda_kd = 1e-3
+        self.T = 4.0
+        gt_dir = r"/eresearch/ai-multiparametric-mri-pc/dzha937/Archive/dzha937/picai/workdir/nnUNet_preprocessed/Task128_TZOnly/gt_segmentations"
+        self.tz_case_stems = {
+            fname.replace(".nii.gz", "")
+            for fname in os.listdir(gt_dir)
+            if fname.endswith(".nii.gz")
+        }
+        print(f"Loaded {len(self.tz_case_stems)} TZ TRAIN cases for KD")
+        gt_dir2 = r"/eresearch/ai-multiparametric-mri-pc/dzha937/Archive/dzha937/picai/workdir/nnUNet_preprocessed/Task154_PZOnly/gt_segmentations"
+        self.pz_case_stems = {
+            fname.replace(".nii.gz", "")
+            for fname in os.listdir(gt_dir2)
+            if fname.endswith(".nii.gz")
+        }
+        print(f"Loaded {len(self.pz_case_stems)} PZ TRAIN cases for KD")
 
     def initialize(self, training=True, force_load_plans=False):
         """
@@ -119,6 +152,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
                 pass
 
             self.initialize_network()
+            self.initialize_net_teacher()
             self.initialize_optimizer_and_scheduler()
 
             assert isinstance(self.network, (SegmentationNetwork, nn.DataParallel))
@@ -160,6 +194,49 @@ class nnUNetTrainerV2(nnUNetTrainer):
         if torch.cuda.is_available():
             self.network.cuda()
         self.network.inference_apply_nonlin = softmax_helper
+
+    def initialize_net_teacher(self):
+        """
+        - momentum 0.99
+        - SGD instead of Adam
+        - self.lr_scheduler = None because we do poly_lr
+        - deep supervision = True
+        - i am sure I forgot something here
+
+        Known issue: forgot to set neg_slope=0 in InitWeights_He; should not make a difference though
+        :return:
+        """
+        if self.threeD:
+            conv_op = nn.Conv3d
+            dropout_op = nn.Dropout3d
+            norm_op = nn.InstanceNorm3d
+
+        else:
+            conv_op = nn.Conv2d
+            dropout_op = nn.Dropout2d
+            norm_op = nn.InstanceNorm2d
+
+        norm_op_kwargs = {'eps': 1e-5, 'affine': True}
+        dropout_op_kwargs = {'p': 0, 'inplace': True}
+        net_nonlin = nn.LeakyReLU
+        net_nonlin_kwargs = {'negative_slope': 1e-2, 'inplace': True}
+        self.net_teacher = Generic_UNet(self.num_input_channels, self.base_num_features, self.num_classes,
+                                    len(self.net_num_pool_op_kernel_sizes),
+                                    self.conv_per_stage, 2, conv_op, norm_op, norm_op_kwargs, dropout_op,
+                                    dropout_op_kwargs,
+                                    net_nonlin, net_nonlin_kwargs, True, False, lambda x: x, InitWeights_He(1e-2),
+                                    self.net_num_pool_op_kernel_sizes, self.net_conv_kernel_sizes, False, True, True)
+        self.net_teacher2 = Generic_UNet(self.num_input_channels, self.base_num_features, self.num_classes,
+                                    len(self.net_num_pool_op_kernel_sizes),
+                                    self.conv_per_stage, 2, conv_op, norm_op, norm_op_kwargs, dropout_op,
+                                    dropout_op_kwargs,
+                                    net_nonlin, net_nonlin_kwargs, True, False, lambda x: x, InitWeights_He(1e-2),
+                                    self.net_num_pool_op_kernel_sizes, self.net_conv_kernel_sizes, False, True, True)
+        if torch.cuda.is_available():
+            self.net_teacher.cuda()
+            self.net_teacher2.cuda()
+        self.net_teacher.inference_apply_nonlin = softmax_helper
+        self.net_teacher2.inference_apply_nonlin = softmax_helper
 
     def initialize_optimizer_and_scheduler(self):
         assert self.network is not None, "self.initialize_network must be called first"
@@ -220,6 +297,14 @@ class nnUNetTrainerV2(nnUNetTrainer):
         self.network.do_ds = ds
         return ret
 
+    def _kd_loss_per_sample(self, logits_s, logits_t, eps=1e-6):
+        log_p_s = F.log_softmax(logits_s / self.T, dim=1)
+        p_t = F.softmax(logits_t / self.T, dim=1).clamp_min(eps)
+        log_p_t = torch.log(p_t)
+
+        kl_map = (p_t * (log_p_t - log_p_s)).sum(dim=1)  # [B, Z, Y, X]
+        return kl_map.mean(dim=(1, 2, 3)) * (self.T * self.T)  # [B]
+
     def run_iteration(self, data_generator, current_epoch, do_backprop=True, run_online_evaluation=False):
         """
         gradient clipping improves training stability
@@ -244,12 +329,42 @@ class nnUNetTrainerV2(nnUNetTrainer):
         self.optimizer.zero_grad()
 
         if self.fp16:
+            with torch.no_grad():
+                out_teacher = self.net_teacher(data)
+                out_teacher2 = self.net_teacher2(data)
+
             with autocast():
                 data.requires_grad_()
                 output = self.network(data)
                 #
                 l = self.loss(output, target, current_epoch, do_backprop, keys, self.gradients_map)
 
+            # put kd loss here
+            kd_per_sample = self._kd_loss_per_sample(output[0], out_teacher[0])
+            mask = torch.tensor(
+                [cid in self.tz_case_stems for cid in keys],
+                device=l.device,
+                dtype=torch.bool
+            )
+            if mask.any():
+                loss_kd = kd_per_sample[mask].mean()
+            else:
+                loss_kd = torch.zeros((), device=l.device)
+
+            # put kd loss here
+            kd_per_sample2 = self._kd_loss_per_sample(output[0], out_teacher2[0])
+            mask2 = torch.tensor(
+                [cid in self.pz_case_stems for cid in keys],
+                device=l.device,
+                dtype=torch.bool
+            )
+            if mask2.any():
+                loss_kd2 = kd_per_sample2[mask2].mean()
+            else:
+                loss_kd2 = torch.zeros((), device=l.device)
+            print(f"loss_kdT = {loss_kd}, loss_kdP = {loss_kd2}, loss_seg = {l}, mask_T={mask}, mask_P={mask2}")
+            loss_seg = l
+            l = loss_seg + self.lambda_kd * loss_kd + self.lambda_kd * loss_kd2
             if do_backprop:
                 self.amp_grad_scaler.scale(l).backward()
                 self.amp_grad_scaler.unscale_(self.optimizer)
@@ -267,6 +382,8 @@ class nnUNetTrainerV2(nnUNetTrainer):
                         norm_channels.append(norm_per_channel)
                     self.gradients_map[keys[i]] = norm
                     self.gradients_map_channels[keys[i]] = norm_channels
+                    self.dicescore_map[keys[i]] = dice_index[i].item()
+                    self.focalloss_map[keys[i]] = result_fl[i].item()
                 del data
         else:
             output = self.network(data)
@@ -283,7 +400,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
 
         del target
 
-        return l.detach().cpu().numpy()
+        return loss_seg.detach().cpu().numpy()
 
     def do_split(self):
         """

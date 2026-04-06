@@ -72,6 +72,8 @@ class NetworkTrainer(object):
 
         ################# SET THESE IN self.initialize() ###################################
         self.network: Tuple[SegmentationNetwork, nn.DataParallel] = None
+        self.net_teacher: Tuple[SegmentationNetwork, nn.DataParallel] = None
+        self.net_teacher2: Tuple[SegmentationNetwork, nn.DataParallel] = None
         self.optimizer = None
         self.lr_scheduler = None
         self.tr_gen = self.val_gen = None
