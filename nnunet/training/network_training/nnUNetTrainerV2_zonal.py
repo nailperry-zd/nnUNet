@@ -157,4 +157,4 @@ class nnUNet_Zonal_KD_FLCELossNonBatch_EW500(nnUNetTrainerV2_zonal):
         self.max_num_epochs = 500
         print("Setting up self.loss = FLCELossNonBatch_EW")
         self.loss = FLCENonBatch_SPL({'gamma':2}, {'gamma':0}, max_num_epochs=self.max_num_epochs, epoch_for_weighting=self.max_num_epochs)
-        self.save_latest_only = False
+        # self.save_latest_only = False
