@@ -358,7 +358,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
                 loss_kd2 = kd_per_sample2[mask2].mean()
             else:
                 loss_kd2 = torch.zeros((), device=l.device)
-            print(f"loss_kdP = {loss_kd2}, loss_seg = {l}, mask_T={mask}, mask_P={mask2}")
+            print(f"loss_kdP = {loss_kd2}, loss_seg = {l}, mask_P={mask2}")
             loss_seg = l
             l = loss_seg + self.lambda_kd * loss_kd2
             if do_backprop:
