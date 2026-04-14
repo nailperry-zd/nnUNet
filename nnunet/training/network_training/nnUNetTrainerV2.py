@@ -64,7 +64,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
         self.ds_loss_weights = None
 
         self.pin_memory = True
-        self.lambda_kd = 1e-3
+        self.lambda_kd = 1e-2
         self.T = 4.0
         gt_dir = r"/eresearch/ai-multiparametric-mri-pc/dzha937/Archive/dzha937/picai/workdir/nnUNet_preprocessed/Task128_TZOnly/gt_segmentations"
         self.tz_case_stems = {
