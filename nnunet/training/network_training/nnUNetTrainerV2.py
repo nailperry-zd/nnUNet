@@ -251,13 +251,13 @@ class nnUNetTrainerV2(nnUNetTrainer):
         if self.fp16:
             if do_backprop:
                 import time
-                # non-grad, start
+                # non-input grad,EW, start
                 torch.cuda.synchronize()
                 t0 = time.time()
                 data0 = data.detach()
                 with autocast():
                     output = self.network(data0)
-                    l = self.loss(output, target, 1000, do_backprop, keys, self.gradients_map)
+                    l = self.loss(output, target, -1, do_backprop, keys, self.gradients_map)
                 self.amp_grad_scaler.scale(l).backward()
                 # non-grad, end
                 torch.cuda.synchronize()
