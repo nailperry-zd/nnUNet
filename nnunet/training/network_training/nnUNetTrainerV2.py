@@ -311,8 +311,8 @@ class nnUNetTrainerV2(nnUNetTrainer):
                 torch.nn.utils.clip_grad_norm_(self.network.parameters(), 12)
                 self.optimizer.step()
 
-        if run_online_evaluation:
-            self.run_online_evaluation(output, target)
+        # if run_online_evaluation:
+            # self.run_online_evaluation(output, target)
 
         del target
 
