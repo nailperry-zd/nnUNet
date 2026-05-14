@@ -270,7 +270,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
             data1 = data.detach().clone().requires_grad_(True)
             with autocast():
                 output = self.network(data1)
-                l = self.loss(output, target, current_epoch, do_backprop, keys, self.gradients_map)
+                l = self.loss(output, target, 1000, do_backprop, keys, self.gradients_map)
             if do_backprop:
                 self.amp_grad_scaler.scale(l).backward()
                 data_grad = data1.grad.cpu().numpy()
