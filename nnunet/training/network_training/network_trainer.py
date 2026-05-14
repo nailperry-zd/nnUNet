@@ -623,14 +623,15 @@ class NetworkTrainer(object):
     def on_epoch_end(self):
         if self.timing_batches > 0:
             overhead = (self.t_grad_epoch - self.t_non_grad_epoch) / self.t_non_grad_epoch * 100
-
-            print(
-                f"[Epoch timing] "
-                f"baseline={self.t_non_grad_epoch:.4f}s, "
-                f"RSSPL={self.t_grad_epoch:.4f}s, "
-                f"overhead={overhead:.2f}%, "
-                f"batches={self.timing_batches}"
-            )
+            overhead_str = (
+                                f"[Epoch timing] "
+                                f"baseline={self.t_non_grad_epoch:.4f}s, "
+                                f"RSSPL={self.t_grad_epoch:.4f}s, "
+                                f"overhead={overhead:.2f}%, "
+                                f"batches={self.timing_batches}"
+                            )
+            print(overhead_str)
+            self.print_to_log_file(f"After this epoch, overhead_str is: \n{overhead_str}")
 
         self.t_non_grad_epoch = 0.0
         self.t_grad_epoch = 0.0
