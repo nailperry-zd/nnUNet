@@ -249,60 +249,62 @@ class nnUNetTrainerV2(nnUNetTrainer):
         self.optimizer.zero_grad()
 
         if self.fp16:
+            import time
+            # non-input grad,EW, start
+            torch.cuda.synchronize()
+            t0 = time.time()
+            data0 = data.detach()
+            with autocast():
+                output = self.network(data0)
+                l = self.loss(output, target, -1, do_backprop, keys, self.gradients_map)
             if do_backprop:
-                import time
-                # non-input grad,EW, start
-                torch.cuda.synchronize()
-                t0 = time.time()
-                data0 = data.detach()
-                with autocast():
-                    output = self.network(data0)
-                    l = self.loss(output, target, -1, do_backprop, keys, self.gradients_map)
                 self.amp_grad_scaler.scale(l).backward()
-                # non-grad, end
-                torch.cuda.synchronize()
-                t1 = time.time()
-                t_non_grad = t1 - t0
+            # non-grad, end
+            torch.cuda.synchronize()
+            t1 = time.time()
+            t_non_grad = t1 - t0
 
-                self.optimizer.zero_grad()
+            self.optimizer.zero_grad()
 
-                # grad, start
-                torch.cuda.synchronize()
-                t2 = time.time()
-                data1 = data.detach().clone().requires_grad_(True)
-                with autocast():
-                    output = self.network(data1)
-                    l = self.loss(output, target, current_epoch, do_backprop, keys, self.gradients_map)
+            # grad, start
+            torch.cuda.synchronize()
+            t2 = time.time()
+            data1 = data.detach().clone().requires_grad_(True)
+            with autocast():
+                output = self.network(data1)
+                l = self.loss(output, target, current_epoch, do_backprop, keys, self.gradients_map)
+            if do_backprop:
                 self.amp_grad_scaler.scale(l).backward()
-                data_grad = data1.grad.cpu().numpy()
-                # grad, end
-                torch.cuda.synchronize()
-                t3 = time.time()
-                t_grad = t3 - t2
+            data_grad = data1.grad.cpu().numpy()
+            # grad, end
+            torch.cuda.synchronize()
+            t3 = time.time()
+            t_grad = t3 - t2
 
-                print(f"t_non_grad={t_non_grad:.4f}, t_grad={t_grad:.4f}, overhead={(t_grad-t_non_grad)/t_non_grad*100:.2f}%")
-                self.t_non_grad_epoch += t_non_grad
-                self.t_grad_epoch += t_grad
-                self.timing_batches += 1
+            print(f"t_non_grad={t_non_grad:.4f}, t_grad={t_grad:.4f}, overhead={(t_grad-t_non_grad)/t_non_grad*100:.2f}%")
+            self.t_non_grad_epoch += t_non_grad
+            self.t_grad_epoch += t_grad
+            self.timing_batches += 1
 
+            if do_backprop:
                 self.amp_grad_scaler.unscale_(self.optimizer)
                 torch.nn.utils.clip_grad_norm_(self.network.parameters(), 12)
                 self.amp_grad_scaler.step(self.optimizer)
                 self.amp_grad_scaler.update()
 
-                result_fl = self.fl(output[0], target[0])
-                dice_index = self.dice(output[0], target[0])
-                for i in range(data_grad.shape[0]):  # Iterate over each batch
-                    norm = np.linalg.norm(data_grad[i])  # Calculate L2 norm
-                    norm_channels = []
-                    for j in range(data_grad.shape[1]):
-                        norm_per_channel = np.linalg.norm(data_grad[i][j])  # Calculate L2 norm for each channel
-                        norm_channels.append(norm_per_channel)
-                    self.gradients_map[keys[i]] = norm
-                    self.gradients_map_channels[keys[i]] = norm_channels
-                    self.dicescore_map[keys[i]] = dice_index[i].item()
-                    self.focalloss_map[keys[i]] = result_fl[i].item()
-                del data
+            result_fl = self.fl(output[0], target[0])
+            dice_index = self.dice(output[0], target[0])
+            for i in range(data_grad.shape[0]):  # Iterate over each batch
+                norm = np.linalg.norm(data_grad[i])  # Calculate L2 norm
+                norm_channels = []
+                for j in range(data_grad.shape[1]):
+                    norm_per_channel = np.linalg.norm(data_grad[i][j])  # Calculate L2 norm for each channel
+                    norm_channels.append(norm_per_channel)
+                self.gradients_map[keys[i]] = norm
+                self.gradients_map_channels[keys[i]] = norm_channels
+                self.dicescore_map[keys[i]] = dice_index[i].item()
+                self.focalloss_map[keys[i]] = result_fl[i].item()
+            del data
         else:
             output = self.network(data)
             del data
