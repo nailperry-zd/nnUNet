@@ -290,19 +290,19 @@ class nnUNetTrainerV2(nnUNetTrainer):
                 self.amp_grad_scaler.step(self.optimizer)
                 self.amp_grad_scaler.update()
 
-            result_fl = self.fl(output[0], target[0])
-            dice_index = self.dice(output[0], target[0])
-            for i in range(data_grad.shape[0]):  # Iterate over each batch
-                norm = np.linalg.norm(data_grad[i])  # Calculate L2 norm
-                norm_channels = []
-                for j in range(data_grad.shape[1]):
-                    norm_per_channel = np.linalg.norm(data_grad[i][j])  # Calculate L2 norm for each channel
-                    norm_channels.append(norm_per_channel)
-                self.gradients_map[keys[i]] = norm
-                self.gradients_map_channels[keys[i]] = norm_channels
-                self.dicescore_map[keys[i]] = dice_index[i].item()
-                self.focalloss_map[keys[i]] = result_fl[i].item()
-            del data
+                result_fl = self.fl(output[0], target[0])
+                dice_index = self.dice(output[0], target[0])
+                for i in range(data_grad.shape[0]):  # Iterate over each batch
+                    norm = np.linalg.norm(data_grad[i])  # Calculate L2 norm
+                    norm_channels = []
+                    for j in range(data_grad.shape[1]):
+                        norm_per_channel = np.linalg.norm(data_grad[i][j])  # Calculate L2 norm for each channel
+                        norm_channels.append(norm_per_channel)
+                    self.gradients_map[keys[i]] = norm
+                    self.gradients_map_channels[keys[i]] = norm_channels
+                    self.dicescore_map[keys[i]] = dice_index[i].item()
+                    self.focalloss_map[keys[i]] = result_fl[i].item()
+                del data
         else:
             output = self.network(data)
             del data
