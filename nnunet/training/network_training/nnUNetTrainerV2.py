@@ -279,7 +279,9 @@ class nnUNetTrainerV2(nnUNetTrainer):
                 t_grad = t3 - t2
 
                 print(f"t_non_grad={t_non_grad:.4f}, t_grad={t_grad:.4f}, overhead={(t_grad-t_non_grad)/t_non_grad*100:.2f}%")
-
+                self.t_non_grad_epoch += t_non_grad
+                self.t_grad_epoch += t_grad
+                self.timing_batches += 1
 
                 self.amp_grad_scaler.unscale_(self.optimizer)
                 torch.nn.utils.clip_grad_norm_(self.network.parameters(), 12)

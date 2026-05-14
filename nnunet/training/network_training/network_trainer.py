@@ -129,6 +129,9 @@ class NetworkTrainer(object):
         self.gradients_map_channels = {}
         self.dicescore_map = {}
         self.focalloss_map = {}
+        self.t_non_grad_epoch = 0.0
+        self.t_grad_epoch = 0.0
+        self.timing_batches = 0
 
     @abstractmethod
     def initialize(self, training=True):
@@ -618,6 +621,20 @@ class NetworkTrainer(object):
         return continue_training
 
     def on_epoch_end(self):
+        if self.timing_batches > 0:
+            overhead = (self.t_grad_epoch - self.t_non_grad_epoch) / self.t_non_grad_epoch * 100
+
+            print(
+                f"[Epoch timing] "
+                f"baseline={self.t_non_grad_epoch:.4f}s, "
+                f"RSSPL={self.t_grad_epoch:.4f}s, "
+                f"overhead={overhead:.2f}%, "
+                f"batches={self.timing_batches}"
+            )
+
+        self.t_non_grad_epoch = 0.0
+        self.t_grad_epoch = 0.0
+        self.timing_batches = 0
         self.finish_online_evaluation()  # does not have to do anything, but can be used to update self.all_val_eval_
         # metrics
 
