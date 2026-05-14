@@ -239,8 +239,6 @@ class nnUNetTrainerV2(nnUNetTrainer):
 
         data = maybe_to_torch(data)
         target = maybe_to_torch(target)
-        output = None
-        l = None
 
         if torch.cuda.is_available():
             data = to_cuda(data)
