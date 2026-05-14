@@ -247,86 +247,45 @@ class nnUNetTrainerV2(nnUNetTrainer):
         self.optimizer.zero_grad()
 
         if self.fp16:
-            with autocast():
-                data.requires_grad_()
-                output = self.network(data)
-                #
-                l = self.loss(output, target, current_epoch, do_backprop, keys, self.gradients_map)
-
             if do_backprop:
+                import time
+                # non-grad, start
+                torch.cuda.synchronize()
+                t0 = time.time()
+                data0 = data.detach()
+                with autocast():
+                    output = self.network(data0)
+                    l = self.loss(output, target, 1000, do_backprop, keys, self.gradients_map)
                 self.amp_grad_scaler.scale(l).backward()
+                # non-grad, end
+                torch.cuda.synchronize()
+                t1 = time.time()
+                t_non_grad = t1 - t0
+
+                self.optimizer.zero_grad()
+
+                # grad, start
+                torch.cuda.synchronize()
+                t2 = time.time()
+                data1 = data.detach().clone().requires_grad_(True)
+                with autocast():
+                    output = self.network(data1)
+                    l = self.loss(output, target, current_epoch, do_backprop, keys, self.gradients_map)
+                self.amp_grad_scaler.scale(l).backward()
+                data_grad = data1.grad.cpu().numpy()
+                # grad, end
+                torch.cuda.synchronize()
+                t3 = time.time()
+                t_grad = t3 - t2
+
+                print(f"t_non_grad={t_non_grad:.4f}, t_grad={t_grad:.4f}, overhead={(t_grad-t_non_grad)/t_non_grad*100:.2f}%")
+
+
                 self.amp_grad_scaler.unscale_(self.optimizer)
                 torch.nn.utils.clip_grad_norm_(self.network.parameters(), 12)
                 self.amp_grad_scaler.step(self.optimizer)
                 self.amp_grad_scaler.update()
 
-                # Calculate the L2 norm for each batch
-                data_grad = data.grad.cpu().numpy()
-                # ------Visualisation-------
-                # import SimpleITK as sitk
-                # import numpy as np
-                # data_grad = np.abs(data_grad)
-                # filedir = rf"Y:\picai\workdir\nnUNet_results\nnUNet\3d_fullres\Task822_PICAI_Expert\epoch{current_epoch}"
-                # # Check if the directory exists, and create it if it does not
-                # if not os.path.exists(filedir):
-                #     os.makedirs(filedir)
-                #     print(f"Directory '{filedir}' created!")
-                # # Get the dimensions of the data
-                # batch_size, num_sequences, depth, height, width = data_grad.shape
-                # # Iterate over each batch and each sequence
-                # for b in range(batch_size):
-                #     for seq in range(num_sequences):
-                #         # Get the current volume data
-                #         volume = data_grad[b, seq, :, :, :]
-                #         # Convert to SimpleITK image
-                #         sitk_image = sitk.GetImageFromArray(volume)
-                #         # Set image metadata (optional)
-                #         sitk_image.SetSpacing((1.0, 1.0, 1.0))  # Set voxel spacing as needed
-                #         sitk_image.SetOrigin((0.0, 0.0, 0.0))  # Set the origin as needed
-                #
-                #         # Save as nii.gz file
-                #         filename = rf"{filedir}\{keys[b]}_sequence_{seq + 1}.nii.gz"
-                #         sitk.WriteImage(sitk_image, filename)
-                #
-                # print("Gradients saving completed!")
-                #
-                # # Get the dimensions of the data
-                # batch_size, num_sequences, depth, height, width = output[0].shape
-                # # Iterate over each batch and each sequence
-                # for b in range(batch_size):
-                #     for seq in range(num_sequences):
-                #         # Get the current volume data
-                #         pred = softmax_helper(output[0])
-                #         volume = pred[b, seq, :, :, :].cpu().detach().numpy().astype(np.float32)
-                #         # Convert to SimpleITK image
-                #         sitk_image = sitk.GetImageFromArray(volume)
-                #         # Set image metadata (optional)
-                #         sitk_image.SetSpacing((1.0, 1.0, 1.0))  # Set voxel spacing as needed
-                #         sitk_image.SetOrigin((0.0, 0.0, 0.0))  # Set the origin as needed
-                #
-                #         # Save as nii.gz file
-                #         filename = rf"{filedir}\{keys[b]}_prediction_{seq + 1}.nii.gz"
-                #         sitk.WriteImage(sitk_image, filename)
-                #
-                # print("Prediction saving completed!")
-                # # Get the dimensions of the data
-                # batch_size, num_sequences, depth, height, width = target[0].shape
-                # # Iterate over each batch and each sequence
-                # for b in range(batch_size):
-                #     for seq in range(num_sequences):
-                #         # Get the current volume data
-                #         volume = target[0][b, seq, :, :, :].cpu().detach().numpy().astype(np.float32)
-                #         # Convert to SimpleITK image
-                #         sitk_image = sitk.GetImageFromArray(volume)
-                #         # Set image metadata (optional)
-                #         sitk_image.SetSpacing((1.0, 1.0, 1.0))  # Set voxel spacing as needed
-                #         sitk_image.SetOrigin((0.0, 0.0, 0.0))  # Set the origin as needed
-                #
-                #         # Save as nii.gz file
-                #         filename = rf"{filedir}\{keys[b]}_groundtruth_{seq + 1}.nii.gz"
-                #         sitk.WriteImage(sitk_image, filename)
-                #
-                # print("Groundtruth saving completed!")
                 result_fl = self.fl(output[0], target[0])
                 dice_index = self.dice(output[0], target[0])
                 for i in range(data_grad.shape[0]):  # Iterate over each batch
