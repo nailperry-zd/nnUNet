@@ -257,7 +257,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
                 data0 = data.detach()
                 with autocast():
                     output = self.network(data0)
-                    l = self.loss(output, target, current_epoch, do_backprop, keys, self.gradients_map)
+                    l = self.loss(output, target, 1000, do_backprop, keys, self.gradients_map)
                 self.amp_grad_scaler.scale(l).backward()
                 # non-grad, end
                 torch.cuda.synchronize()
