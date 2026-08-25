@@ -372,7 +372,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
             # if fold==all then we use all images for training and validation
             tr_keys = val_keys = list(self.dataset.keys())
         else:
-            splits_file = join(self.dataset_directory, "splits_final_Task154_PZOnly_5fold.pkl")
+            splits_file = join(self.dataset_directory, "splits_final_Task40_Unsure_5fold.pkl")
 
             # if the split file does not exist we need to create it
             if not isfile(splits_file):
