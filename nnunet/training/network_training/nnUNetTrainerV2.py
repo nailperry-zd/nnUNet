@@ -70,7 +70,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
         self.dice = SoftDice(apply_nonlin=softmax_helper, **{'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
         self.lambda_kd = 1e-3
         self.T = 4.0
-        tz_pids_file = r"/eresearch/ai-multiparametric-mri-pc/dzha937/data_original/PICAI_DataRepo/nnUNet_raw_data_backup/Task1453_picai_baseline/zone_division/Task128_TZOnly_pids.txt"
+        tz_pids_file = r"/eresearch/ai-multiparametric-mri-pc/dzha937/dzha937/data_original/PICAI_DataRepo/nnUNet_raw_data_backup/Task1453_picai_baseline/zone_division/Task128_TZOnly_pids.txt"
         with open(tz_pids_file, "r") as f:
             self.tz_case_stems = {
                 line.strip()
@@ -78,7 +78,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
                 if line.strip()
             }
         print(f"Loaded {len(self.tz_case_stems)} TZ TRAIN cases for KD")
-        pz_pids_file = r"/eresearch/ai-multiparametric-mri-pc/dzha937/data_original/PICAI_DataRepo/nnUNet_raw_data_backup/Task1453_picai_baseline/zone_division/Task194_BCasPZOnly_pids.txt"
+        pz_pids_file = r"/eresearch/ai-multiparametric-mri-pc/dzha937/dzha937/data_original/PICAI_DataRepo/nnUNet_raw_data_backup/Task1453_picai_baseline/zone_division/Task194_BCasPZOnly_pids.txt"
         with open(pz_pids_file, "r") as f:
             self.pz_case_stems = {
                 line.strip()
