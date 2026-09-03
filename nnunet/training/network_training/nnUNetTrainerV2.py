@@ -70,19 +70,21 @@ class nnUNetTrainerV2(nnUNetTrainer):
         self.dice = SoftDice(apply_nonlin=softmax_helper, **{'batch_dice': False, 'smooth': 1e-5, 'do_bg': False})
         self.lambda_kd = 1e-3
         self.T = 4.0
-        gt_dir = r"/eresearch/ai-multiparametric-mri-pc/dzha937/Archive/dzha937/picai/workdir/nnUNet_preprocessed/Task128_TZOnly/gt_segmentations"
-        self.tz_case_stems = {
-            fname.replace(".nii.gz", "")
-            for fname in os.listdir(gt_dir)
-            if fname.endswith(".nii.gz")
-        }
+        tz_pids_file = r"/eresearch/ai-multiparametric-mri-pc/dzha937/dzha937/data_original/PICAI_DataRepo/nnUNet_raw_data_backup/Task1500_picai_fully/global_patient_consistent_5fold/A/A_csPCa.txt"
+        with open(tz_pids_file, "r") as f:
+            self.tz_case_stems = {
+                line.strip()
+                for line in f
+                if line.strip()
+            }
         print(f"Loaded {len(self.tz_case_stems)} TZ TRAIN cases for KD")
-        gt_dir2 = r"/eresearch/ai-multiparametric-mri-pc/dzha937/Archive/dzha937/picai/workdir/nnUNet_preprocessed/Task154_PZOnly/gt_segmentations"
-        self.pz_case_stems = {
-            fname.replace(".nii.gz", "")
-            for fname in os.listdir(gt_dir2)
-            if fname.endswith(".nii.gz")
-        }
+        pz_pids_file = r"/eresearch/ai-multiparametric-mri-pc/dzha937/dzha937/data_original/PICAI_DataRepo/nnUNet_raw_data_backup/Task1500_picai_fully/global_patient_consistent_5fold/B/B_csPCa.txt"
+        with open(pz_pids_file, "r") as f:
+            self.pz_case_stems = {
+                line.strip()
+                for line in f
+                if line.strip()
+            }
         print(f"Loaded {len(self.pz_case_stems)} PZ TRAIN cases for KD")
 
     def initialize(self, training=True, force_load_plans=False):
