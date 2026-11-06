@@ -341,10 +341,10 @@ class nnUNetTrainerV2(nnUNetTrainer):
                 #
                 l = self.loss(output, target, current_epoch, do_backprop, keys, self.gradients_map)
 
-            # put kd loss here
+            # put teacher_TZ kd loss here, when sample belongs to PZ (mismatch)
             kd_per_sample = self._kd_loss_per_sample(output[0], out_teacher[0])
             mask = torch.tensor(
-                [cid in self.tz_case_stems for cid in keys],
+                [cid in self.pz_case_stems for cid in keys],
                 device=l.device,
                 dtype=torch.bool
             )
@@ -353,10 +353,10 @@ class nnUNetTrainerV2(nnUNetTrainer):
             else:
                 loss_kd = torch.zeros((), device=l.device)
 
-            # put kd loss here
+            # put teacher_PZ kd loss here, when sample belongs to TZ (mismatch)
             kd_per_sample2 = self._kd_loss_per_sample(output[0], out_teacher2[0])
             mask2 = torch.tensor(
-                [cid in self.pz_case_stems for cid in keys],
+                [cid in self.tz_case_stems for cid in keys],
                 device=l.device,
                 dtype=torch.bool
             )
