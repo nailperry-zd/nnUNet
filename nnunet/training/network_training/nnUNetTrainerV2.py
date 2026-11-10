@@ -87,6 +87,8 @@ class nnUNetTrainerV2(nnUNetTrainer):
             }
         print(f"Loaded {len(self.pz_case_stems)} PZ TRAIN cases for KD")
 
+        self.combined_stems = set(self.pz_case_stems) | set(self.tz_case_stems)
+
     def initialize(self, training=True, force_load_plans=False):
         """
         - replaced get_default_augmentation with get_moreDA_augmentation
@@ -344,7 +346,7 @@ class nnUNetTrainerV2(nnUNetTrainer):
             # put kd loss here
             kd_per_sample = self._kd_loss_per_sample(output[0], out_teacher[0])
             mask = torch.tensor(
-                [cid in self.tz_case_stems for cid in keys],
+                [cid in self.combined_stems for cid in keys],
                 device=l.device,
                 dtype=torch.bool
             )
@@ -355,16 +357,11 @@ class nnUNetTrainerV2(nnUNetTrainer):
 
             # put kd loss here
             kd_per_sample2 = self._kd_loss_per_sample(output[0], out_teacher2[0])
-            mask2 = torch.tensor(
-                [cid in self.pz_case_stems for cid in keys],
-                device=l.device,
-                dtype=torch.bool
-            )
-            if mask2.any():
-                loss_kd2 = kd_per_sample2[mask2].mean()
+            if mask.any():
+                loss_kd2 = kd_per_sample2[mask].mean()
             else:
                 loss_kd2 = torch.zeros((), device=l.device)
-            print(f"loss_kdT = {loss_kd}, loss_kdP = {loss_kd2}, loss_seg = {l}, mask_T={mask}, mask_P={mask2}")
+            print(f"loss_kdT = {loss_kd}, loss_kdP = {loss_kd2}, loss_seg = {l}, mask_TP={mask}")
             loss_seg = l
             l = loss_seg + self.lambda_kd * loss_kd + self.lambda_kd * loss_kd2
             if do_backprop:
